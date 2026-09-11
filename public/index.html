@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Biblioteca — Universidad EP de México</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ==================== LOGIN ==================== -->
+  <section id="pantalla-login" class="login-wrap">
+    <form id="form-login" class="login-card">
+      <div class="login-brand">
+        <div class="login-logo">EP</div>
+        <h1>Universidad EP de México</h1>
+        <p>Sistema de Gestión de Biblioteca</p>
+        <span class="login-proc">PR-GE-16 · Préstamos y salvaguardo de libros</span>
+      </div>
+      <label>Correo electrónico
+        <input type="email" id="login-email" autocomplete="username" required />
+      </label>
+      <label>Contraseña
+        <input type="password" id="login-password" autocomplete="current-password" required />
+      </label>
+      <button type="submit" class="btn btn-primary btn-block">Iniciar sesión</button>
+      <p id="login-error" class="form-error" hidden></p>
+    </form>
+  </section>
+
+  <!-- ==================== APP ==================== -->
+  <div id="app" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="login-logo sm">EP</div>
+        <div>
+          <strong>Biblioteca EP</strong>
+          <span>Universidad EP de México</span>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-item active" data-vista="panel">Panel</button>
+        <button class="nav-item" data-vista="prestamos">Préstamos</button>
+        <button class="nav-item" data-vista="libros">Libros</button>
+        <button class="nav-item" data-vista="lectores">Lectores</button>
+      </nav>
+      <div class="sidebar-foot">
+        <span id="sidebar-usuario"></span>
+        <button id="btn-password" class="btn-link">Cambiar contraseña</button>
+        <button id="btn-logout" class="btn-link">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <main class="contenido">
+      <div id="vista-panel" class="vista"></div>
+      <div id="vista-prestamos" class="vista" hidden></div>
+      <div id="vista-libros" class="vista" hidden></div>
+      <div id="vista-lectores" class="vista" hidden></div>
+    </main>
+  </div>
+
+  <!-- ==================== MODAL ==================== -->
+  <div id="modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <header class="modal-head">
+        <h3 id="modal-titulo"></h3>
+        <button id="modal-cerrar" class="btn-icono" aria-label="Cerrar">&times;</button>
+      </header>
+      <div id="modal-cuerpo" class="modal-cuerpo"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
