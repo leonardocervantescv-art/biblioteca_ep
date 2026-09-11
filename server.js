@@ -12,6 +12,7 @@ const authRoutes = require('./src/routes/auth.routes');
 const librosRoutes = require('./src/routes/libros.routes');
 const lectoresRoutes = require('./src/routes/lectores.routes');
 const prestamosRoutes = require('./src/routes/prestamos.routes');
+const catalogoRoutes = require('./src/routes/catalogo.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +27,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/libros', librosRoutes);
 app.use('/api/lectores', lectoresRoutes);
 app.use('/api/prestamos', prestamosRoutes);
+// Catálogo de consulta para estudiantes: sin autenticación, sólo lectura.
+app.use('/api/catalogo', catalogoRoutes);
 
 // Panel de indicadores para el administrador
 app.get('/api/stats', authRequired, async (req, res) => {

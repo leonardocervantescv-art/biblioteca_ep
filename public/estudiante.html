@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catálogo de la Biblioteca — Universidad EP de México</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="estudiante.css" />
+</head>
+<body class="cat-body">
+  <header class="cat-header">
+    <div class="cat-brand">
+      <div class="login-logo sm">EP</div>
+      <div>
+        <strong>Universidad EP de México</strong>
+        <span>Catálogo de la Biblioteca</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="cat-main">
+    <div class="cat-aviso">
+      <strong>Aviso importante:</strong> esta vista es únicamente de consulta.
+      La solicitud de préstamo de libros es <strong>exclusivamente presencial</strong>
+      y debe realizarse directamente en la biblioteca. Es requisito indispensable
+      presentar tu <strong>credencial estudiantil</strong> para poder realizar la solicitud.
+    </div>
+
+    <div class="vista-head">
+      <div>
+        <h2>Catálogo de libros</h2>
+        <p>Consulta el acervo disponible en la biblioteca y su disponibilidad.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="filtros">
+        <input type="search" id="f-cat-q" placeholder="Buscar por título, autor, tema o palabra clave…">
+        <select id="f-cat-categoria"><option value="">Todas las categorías</option></select>
+        <select id="f-cat-disponibilidad">
+          <option value="">Cualquier disponibilidad</option>
+          <option value="disponible">Sólo disponibles</option>
+          <option value="no_disponible">No disponibles</option>
+        </select>
+      </div>
+      <div id="cat-resultados"></div>
+    </div>
+  </main>
+
+  <script src="estudiante.js"></script>
+</body>
+</html>

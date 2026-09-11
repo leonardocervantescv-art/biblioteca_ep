@@ -1,0 +1,59 @@
+/* ==========================================================================
+   Vista del estudiante — catálogo de consulta.
+   Independiente del panel de administrador: sin sidebar ni sesión.
+   ========================================================================== */
+
+.cat-body { min-height: 100vh; }
+
+.cat-header {
+  background: var(--azul);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .9rem 1.6rem;
+}
+.cat-brand { display: flex; gap: .7rem; align-items: center; }
+.cat-brand strong { display: block; font-size: .98rem; }
+.cat-brand span { font-size: .78rem; opacity: .85; }
+.cat-link-admin { color: #cfe0ef; font-size: .8rem; }
+.cat-link-admin:hover { color: #fff; }
+
+.cat-main { max-width: 1100px; margin: 0 auto; padding: 1.8rem 1.6rem 3rem; }
+
+.cat-aviso {
+  background: #fdf3e2;
+  border: 1px solid #f0dba8;
+  color: #6b4d0f;
+  border-radius: var(--radio);
+  padding: 1rem 1.2rem;
+  font-size: .9rem;
+  line-height: 1.5;
+  margin-bottom: 1.6rem;
+}
+
+/* ---------- Tarjetas de libro ---------- */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  padding: 1.1rem;
+}
+.cat-card {
+  border: 1px solid var(--gris-borde);
+  border-radius: var(--radio);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+.cat-card h3 { font-size: 1rem; color: var(--azul); margin: 0; }
+.cat-card .cat-autor { font-size: .85rem; color: var(--texto-suave); margin: 0; }
+.cat-card .cat-meta { font-size: .78rem; color: var(--texto-suave); margin: 0; }
+.cat-card .cat-disp { margin-top: auto; padding-top: .5rem; }
+.cat-card .cat-desc { font-size: .82rem; color: var(--texto); margin: 0; }
+
+@media (max-width: 780px) {
+  .cat-header { padding: .8rem 1rem; flex-wrap: wrap; gap: .5rem; }
+  .cat-main { padding: 1.2rem 1rem 2rem; }
+}
