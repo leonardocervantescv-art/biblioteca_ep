@@ -11,10 +11,9 @@
   <section id="pantalla-login" class="login-wrap">
     <form id="form-login" class="login-card">
       <div class="login-brand">
-        <div class="login-logo">EP</div>
+        <img class="logo-style" src="./img/logo.png" alt="logo-epdemexico">
         <h1>Universidad EP de México</h1>
         <p>Sistema de Gestión de Biblioteca</p>
-        <span class="login-proc">PR-GE-16 · Préstamos y salvaguardo de libros</span>
       </div>
       <label>Correo electrónico
         <input type="email" id="login-email" autocomplete="username" required />
@@ -24,9 +23,6 @@
       </label>
       <button type="submit" class="btn btn-primary btn-block">Iniciar sesión</button>
       <p id="login-error" class="form-error" hidden></p>
-      <p style="text-align:center;margin:.2rem 0 0">
-        <a href="estudiante.html" class="btn-link" style="display:inline">¿Eres estudiante? Consulta el catálogo</a>
-      </p>
     </form>
   </section>
 
@@ -34,7 +30,7 @@
   <div id="app" hidden>
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <div class="login-logo sm">EP</div>
+        <img src="./img/logo.png" alt="logo-epdemexico" class="logo-style-2">
         <div>
           <strong>Biblioteca EP</strong>
           <span>Universidad EP de México</span>
@@ -43,11 +39,13 @@
       <nav>
         <button class="nav-item active" data-vista="panel">Panel</button>
         <button class="nav-item" data-vista="prestamos">Préstamos</button>
+        <button class="nav-item" data-vista="historial">Historial</button>
         <button class="nav-item" data-vista="libros">Libros</button>
         <button class="nav-item" data-vista="lectores">Lectores</button>
+        <a class="nav-item nav-item-externo" href="https://sites.google.com/epdemexico.edu.mx/biblioteca-ep/inicio" target="_blank" rel="noopener noreferrer">Consulta la Biblioteca digital ↗</a>
       </nav>
       <div class="sidebar-foot">
-        <span id="sidebar-usuario"></span>
+        <span>Responsable Ing. Sarahi Ramírez Hernández</span>
         <button id="btn-password" class="btn-link">Cambiar contraseña</button>
         <button id="btn-logout" class="btn-link">Cerrar sesión</button>
       </div>
@@ -56,6 +54,7 @@
     <main class="contenido">
       <div id="vista-panel" class="vista"></div>
       <div id="vista-prestamos" class="vista" hidden></div>
+      <div id="vista-historial" class="vista" hidden></div>
       <div id="vista-libros" class="vista" hidden></div>
       <div id="vista-lectores" class="vista" hidden></div>
     </main>

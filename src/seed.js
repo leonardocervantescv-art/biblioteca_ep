@@ -16,9 +16,9 @@ async function ensureAdmin() {
   const [{ n }] = await query('SELECT COUNT(*) AS n FROM usuarios');
   if (n > 0) return; // ya existe al menos un administrador
 
-  const nombre = process.env.ADMIN_NOMBRE || 'Responsable de Biblioteca';
-  const email = (process.env.ADMIN_EMAIL || 'admin@universidadep.mx').trim().toLowerCase();
-  const password = process.env.ADMIN_PASSWORD || 'Admin123';
+  const nombre = process.env.ADMIN_NOMBRE;
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
 
   const hash = await bcrypt.hash(password, 10);
   await query(

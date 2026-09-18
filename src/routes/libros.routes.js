@@ -5,14 +5,27 @@ const { authRequired } = require('../auth');
 const router = express.Router();
 router.use(authRequired);
 
-// Genera un código de barras único con el prefijo institucional.
-async function generarCodigoBarras() {
-  for (let intento = 0; intento < 10; intento++) {
-    const cand = 'EPBIB' + String(Math.floor(100000 + Math.random() * 900000));
+// Toma las primeras `cantidad` letras (sin acentos ni signos) de un texto,
+// en mayúsculas; si el texto no alcanza, rellena con "X".
+function letrasIniciales(texto, cantidad) {
+  const limpio = String(texto || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '');
+  return (limpio + 'XX').slice(0, cantidad);
+}
+
+// Código de barras: EP + 2 letras del título + 2 letras de la ubicación +
+// 2 dígitos consecutivos (00, 01, 02…) para distinguir ejemplares con el
+// mismo título y la misma ubicación.
+async function generarCodigoBarras(titulo, ubicacion) {
+  const base = 'EP' + letrasIniciales(titulo, 2) + letrasIniciales(ubicacion, 2);
+  for (let n = 0; n < 100; n++) {
+    const cand = base + String(n).padStart(2, '0');
     const existe = await query('SELECT id FROM libros WHERE codigo_barras = ?', [cand]);
     if (!existe.length) return cand;
   }
-  throw new Error('No se pudo generar un código de barras único');
+  throw new Error('No se pudo generar un código de barras único (ya hay 100 ejemplares con el mismo título y ubicación)');
 }
 
 // GET /api/libros  — catálogo con búsqueda (título, autor, tema, palabra clave, ISBN)
@@ -69,7 +82,7 @@ router.post('/', async (req, res) => {
     const dup = await query('SELECT id FROM libros WHERE codigo_barras = ?', [codigo]);
     if (dup.length) return res.status(409).json({ error: 'Ya existe un libro con ese código de barras' });
   } else {
-    codigo = await generarCodigoBarras();
+    codigo = await generarCodigoBarras(b.titulo, b.ubicacion);
   }
   const total = Math.max(1, parseInt(b.cantidad_total, 10) || 1);
   const result = await query(
@@ -209,7 +222,7 @@ router.post('/importar', async (req, res) => {
           continue;
         }
       } else {
-        codigo = await generarCodigoBarras();
+        codigo = await generarCodigoBarras(d.titulo, d.ubicacion);
       }
       codigosVistos.add(codigo);
 

@@ -109,12 +109,13 @@ $('#btn-password').addEventListener('click', () => {
 const vistas = {
   panel: renderPanel,
   prestamos: renderPrestamos,
+  historial: renderHistorial,
   libros: renderLibros,
   lectores: renderLectores,
 };
 let vistaActual = 'panel';
 
-$$('.nav-item').forEach((btn) => {
+$$('.nav-item[data-vista]').forEach((btn) => {
   btn.addEventListener('click', () => irA(btn.dataset.vista));
 });
 
@@ -131,7 +132,8 @@ document.addEventListener('click', (e) => { if (e.target.matches('[data-cerrar]'
 function iniciarApp() {
   $('#pantalla-login').hidden = true;
   $('#app').hidden = false;
-  $('#sidebar-usuario').textContent = state.usuario ? state.usuario.nombre : '';
+  const elUsuario = $('#sidebar-usuario');
+  if (elUsuario) elUsuario.textContent = state.usuario ? state.usuario.nombre : '';
   irA('panel');
 }
 
@@ -929,6 +931,93 @@ async function modalRecibo(id) {
         <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir</button>
       </div>`);
   } catch (err) { toast(err.message, 'error'); }
+}
+
+/* ==========================================================================
+   VISTA: HISTORIAL DE PRÉSTAMOS
+   ========================================================================== */
+let historialCache = [];
+async function renderHistorial() {
+  const cont = $('#vista-historial');
+  cont.innerHTML = `
+    <div class="vista-head">
+      <div><h2>Historial de préstamos</h2><p>Consulta y descarga el historial completo de préstamos y devoluciones.</p></div>
+      <button class="btn btn-primary" id="btn-descargar-historial">Descargar CSV</button>
+    </div>
+    <div class="panel">
+      <div class="filtros">
+        <input type="search" id="f-hist-q" placeholder="Buscar por folio, libro o lector…">
+        <select id="f-hist-categoria"><option value="">Todas las categorías</option></select>
+        <select id="f-hist-estado">
+          <option value="">Todos</option>
+          <option value="activo">Activos</option>
+          <option value="vencido">Vencidos</option>
+          <option value="devuelto">Devueltos</option>
+        </select>
+      </div>
+      <div id="tabla-historial"></div>
+    </div>`;
+  const cats = await api('/libros/categorias').catch(() => []);
+  $('#f-hist-categoria').insertAdjacentHTML('beforeend', cats.map((c) => `<option>${esc(c)}</option>`).join(''));
+  ['f-hist-q', 'f-hist-categoria', 'f-hist-estado'].forEach((id) => $(`#${id}`).addEventListener('input', cargarHistorial));
+  $('#btn-descargar-historial').addEventListener('click', descargarHistorialCSV);
+  cargarHistorial();
+}
+
+async function cargarHistorial() {
+  const params = new URLSearchParams();
+  if ($('#f-hist-q').value.trim()) params.set('q', $('#f-hist-q').value.trim());
+  if ($('#f-hist-categoria').value) params.set('categoria', $('#f-hist-categoria').value);
+  if ($('#f-hist-estado').value) params.set('estado', $('#f-hist-estado').value);
+  const tabla = $('#tabla-historial');
+  tabla.innerHTML = '<p class="vacio">Cargando…</p>';
+  try {
+    historialCache = await api(`/prestamos?${params}`);
+    if (!historialCache.length) { tabla.innerHTML = '<p class="vacio">No hay préstamos que coincidan.</p>'; return; }
+    tabla.innerHTML = `
+      <table>
+        <thead><tr><th>Folio</th><th>Libro</th><th>Categoría</th><th>Lector</th><th>Fecha de préstamo</th><th>Fecha de devolución</th><th>Estado</th></tr></thead>
+        <tbody>
+          ${historialCache.map((p) => `
+            <tr>
+              <td>${esc(p.folio)}</td>
+              <td>${esc(p.libro_titulo)}</td>
+              <td>${esc(p.libro_categoria || '—')}</td>
+              <td>${esc(p.lector_nombre)}</td>
+              <td>${fecha(p.fecha_prestamo)}</td>
+              <td>${fecha(p.fecha_devolucion)}</td>
+              <td>${badgeEstadoPrestamo(p)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) { tabla.innerHTML = `<p class="vacio">${esc(err.message)}</p>`; }
+}
+
+// Convierte un valor a un campo CSV, entrecomillando si contiene coma, comillas o salto de línea.
+function campoCSV(v) {
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function descargarHistorialCSV() {
+  if (!historialCache.length) { toast('No hay datos que descargar', 'error'); return; }
+  const encabezados = ['Folio', 'Libro', 'Categoría', 'Lector', 'Fecha de préstamo', 'Fecha de devolución', 'Estado'];
+  const filas = historialCache.map((p) => [
+    p.folio,
+    p.libro_titulo,
+    p.libro_categoria || '',
+    p.lector_nombre,
+    p.fecha_prestamo || '',
+    p.fecha_devolucion || '',
+    p.estado === 'devuelto' ? 'Devuelto' : (p.vencido ? 'Vencido' : 'Activo'),
+  ]);
+  const csv = '﻿' + [encabezados, ...filas].map((f) => f.map(campoCSV).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `historial_prestamos_${hoy()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /* ---------------------------- Arranque ---------------------------- */

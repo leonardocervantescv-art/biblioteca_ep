@@ -10,6 +10,7 @@ const SELECT_BASE = `
   SELECT p.*,
          l.titulo AS libro_titulo, l.autor AS libro_autor, l.isbn AS libro_isbn,
          l.codigo_barras AS libro_codigo_barras, l.ubicacion AS libro_ubicacion,
+         l.categoria AS libro_categoria,
          le.nombre AS lector_nombre, le.tipo AS lector_tipo,
          le.identificacion_tipo AS lector_identificacion_tipo,
          le.identificacion_num AS lector_identificacion_num,
@@ -33,9 +34,9 @@ async function siguienteFolio(conn) {
   return 'P-' + String(ultimo + 1).padStart(6, '0');
 }
 
-// GET /api/prestamos?estado=activo|devuelto|vencido&q=...&lector_id=...
+// GET /api/prestamos?estado=activo|devuelto|vencido&q=...&lector_id=...&categoria=...
 router.get('/', async (req, res) => {
-  const { estado, q, lector_id, libro_id } = req.query;
+  const { estado, q, lector_id, libro_id, categoria } = req.query;
   const where = [];
   const params = [];
   if (estado === 'activo' || estado === 'devuelto') {
@@ -46,6 +47,7 @@ router.get('/', async (req, res) => {
   }
   if (lector_id) { where.push('p.lector_id = ?'); params.push(lector_id); }
   if (libro_id) { where.push('p.libro_id = ?'); params.push(libro_id); }
+  if (categoria) { where.push('l.categoria = ?'); params.push(categoria); }
   if (q) {
     where.push('(p.folio LIKE ? OR l.titulo LIKE ? OR le.nombre LIKE ? OR le.matricula LIKE ?)');
     const like = `%${q}%`;

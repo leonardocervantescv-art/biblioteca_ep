@@ -46,6 +46,9 @@ label { display: flex; flex-direction: column; gap: .3rem; font-size: .85rem; fo
 input, select, textarea { font-family: inherit; font-size: .92rem; padding: .55rem .65rem; border: 1px solid var(--gris-borde); border-radius: 8px; color: var(--texto); background: #fff; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--azul-claro); outline-offset: -1px; }
 .form-error { color: var(--rojo); font-size: .85rem; margin: 0; }
+.logo-style { border-radius: 20px; width: 150px; height: auto;}
+.logo-style-2 { border-radius: 10px; width: 50px; height: auto;}
+
 
 /* ---------- Layout app ---------- */
 #app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
@@ -54,9 +57,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--azul-claro)
 .sidebar-brand strong { display: block; font-size: .95rem; }
 .sidebar-brand span { font-size: .72rem; opacity: .8; }
 .sidebar nav { display: flex; flex-direction: column; gap: .25rem; flex: 1; }
-.nav-item { background: none; border: none; color: #cfe0ef; text-align: left; padding: .65rem .8rem; border-radius: 8px; font-size: .92rem; font-weight: 600; }
+.nav-item { display: block; background: none; border: none; color: #cfe0ef; text-align: left; padding: .65rem .8rem; border-radius: 8px; font-size: .92rem; font-weight: 600; text-decoration: none; cursor: pointer; }
 .nav-item:hover { background: rgba(255,255,255,.1); color: #fff; }
 .nav-item.active { background: #fff; color: var(--azul); }
+.nav-item-externo { margin-top: .5rem; padding-top: .85rem; border-top: 1px solid rgba(255,255,255,.15); }
 .sidebar-foot { display: flex; flex-direction: column; gap: .35rem; border-top: 1px solid rgba(255,255,255,.15); padding-top: 1rem; }
 .sidebar-foot span { font-size: .8rem; opacity: .85; }
 .sidebar-foot .btn-link { color: #cfe0ef; }
