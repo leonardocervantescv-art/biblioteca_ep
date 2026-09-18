@@ -12,6 +12,8 @@
   align-items: center;
   justify-content: space-between;
   padding: .9rem 1.6rem;
+  border-top: 3px solid var(--dorado);
+  box-shadow: 0 1px 8px rgba(0,0,0,.12);
 }
 .cat-brand { display: flex; gap: .7rem; align-items: center; }
 .cat-brand strong { display: block; font-size: .98rem; }
@@ -24,6 +26,7 @@
 .cat-aviso {
   background: #fdf3e2;
   border: 1px solid #f0dba8;
+  border-left: 4px solid var(--dorado);
   color: #6b4d0f;
   border-radius: var(--radio);
   padding: 1rem 1.2rem;
@@ -31,6 +34,13 @@
   line-height: 1.5;
   margin-bottom: 1.6rem;
 }
+
+/* ---------- Filtros: encabezado con botón "hamburguesa" (sólo en móvil) ---------- */
+.filtros-head { display: none; }
+.filtros-titulo { font-weight: 700; color: var(--azul); font-size: .88rem; }
+.filtros-wrap .btn-hamburguesa { background: var(--gris-bg); }
+.filtros-wrap .btn-hamburguesa span { background: var(--azul); }
+.filtros-wrap .btn-hamburguesa:hover { background: var(--gris-borde); }
 
 /* ---------- Tarjetas de libro ---------- */
 .cat-grid {
@@ -41,12 +51,16 @@
 }
 .cat-card {
   border: 1px solid var(--gris-borde);
+  border-top: 3px solid var(--azul-claro);
   border-radius: var(--radio);
   padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
   gap: .4rem;
+  box-shadow: var(--sombra);
+  transition: transform .15s ease, box-shadow .15s ease;
 }
+.cat-card:hover { transform: translateY(-2px); box-shadow: 0 2px 6px rgba(0,0,0,.1), 0 14px 28px rgba(0,0,0,.09); }
 .cat-card h3 { font-size: 1rem; color: var(--azul); margin: 0; }
 .cat-card .cat-autor { font-size: .85rem; color: var(--texto-suave); margin: 0; }
 .cat-card .cat-meta { font-size: .78rem; color: var(--texto-suave); margin: 0; }
@@ -56,4 +70,9 @@
 @media (max-width: 780px) {
   .cat-header { padding: .8rem 1rem; flex-wrap: wrap; gap: .5rem; }
   .cat-main { padding: 1.2rem 1rem 2rem; }
+  .filtros-head { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1.1rem 0; }
+  .filtros-wrap:not(.abierto) .filtros { display: none; }
+  .filtros-wrap.abierto .btn-hamburguesa span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .filtros-wrap.abierto .btn-hamburguesa span:nth-child(2) { opacity: 0; }
+  .filtros-wrap.abierto .btn-hamburguesa span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 }

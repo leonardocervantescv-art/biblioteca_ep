@@ -124,9 +124,21 @@ function irA(nombre) {
   $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.vista === nombre));
   $$('.vista').forEach((v) => (v.hidden = v.id !== `vista-${nombre}`));
   vistas[nombre]();
+  cerrarMenu();
 }
 
 document.addEventListener('click', (e) => { if (e.target.matches('[data-cerrar]')) cerrarModal(); });
+
+/* ---------------------------- Menú hamburguesa (móvil) ---------------------------- */
+function cerrarMenu() {
+  $('#sidebar').classList.remove('abierta');
+  $('#btn-menu').setAttribute('aria-expanded', 'false');
+}
+$('#btn-menu').addEventListener('click', () => {
+  const abierta = $('#sidebar').classList.toggle('abierta');
+  $('#btn-menu').setAttribute('aria-expanded', String(abierta));
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarMenu(); });
 
 /* ---------------------------- Inicio ---------------------------- */
 function iniciarApp() {

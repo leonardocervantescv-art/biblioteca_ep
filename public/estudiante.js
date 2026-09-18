@@ -59,10 +59,23 @@ async function cargarCatalogo() {
   }
 }
 
+// En móvil los filtros se ocultan detrás de un botón tipo "hamburguesa"
+// para no ocupar toda la pantalla antes de ver el catálogo.
+function iniciarToggleFiltros() {
+  const wrap = $('#filtros-wrap');
+  const btn = $('#btn-filtros');
+  if (!wrap || !btn) return;
+  btn.addEventListener('click', () => {
+    const abierto = wrap.classList.toggle('abierto');
+    btn.setAttribute('aria-expanded', String(abierto));
+  });
+}
+
 async function iniciar() {
   const categorias = await api('/categorias').catch(() => []);
   $('#f-cat-categoria').insertAdjacentHTML('beforeend', categorias.map((c) => `<option>${esc(c)}</option>`).join(''));
   ['f-cat-q', 'f-cat-categoria', 'f-cat-disponibilidad'].forEach((id) => $(`#${id}`).addEventListener('input', cargarCatalogo));
+  iniciarToggleFiltros();
   cargarCatalogo();
 }
 

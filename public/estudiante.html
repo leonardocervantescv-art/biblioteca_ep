@@ -34,14 +34,22 @@
     </div>
 
     <div class="panel">
-      <div class="filtros">
-        <input type="search" id="f-cat-q" placeholder="Buscar por título, autor, tema o palabra clave…">
-        <select id="f-cat-categoria"><option value="">Todas las categorías</option></select>
-        <select id="f-cat-disponibilidad">
-          <option value="">Cualquier disponibilidad</option>
-          <option value="disponible">Sólo disponibles</option>
-          <option value="no_disponible">No disponibles</option>
-        </select>
+      <div class="filtros-wrap" id="filtros-wrap">
+        <div class="filtros-head">
+          <span class="filtros-titulo">Filtros de búsqueda</span>
+          <button id="btn-filtros" class="btn-hamburguesa" aria-label="Mostrar filtros" aria-expanded="false" aria-controls="cat-filtros">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+        <div class="filtros" id="cat-filtros">
+          <input type="search" id="f-cat-q" placeholder="Buscar por título, autor, tema o palabra clave…">
+          <select id="f-cat-categoria"><option value="">Todas las categorías</option></select>
+          <select id="f-cat-disponibilidad">
+            <option value="">Cualquier disponibilidad</option>
+            <option value="disponible">Sólo disponibles</option>
+            <option value="no_disponible">No disponibles</option>
+          </select>
+        </div>
       </div>
       <div id="cat-resultados"></div>
     </div>

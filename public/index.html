@@ -28,26 +28,31 @@
 
   <!-- ==================== APP ==================== -->
   <div id="app" hidden>
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
         <img src="./img/logo.png" alt="logo-epdemexico" class="logo-style-2">
         <div>
           <strong>Biblioteca EP</strong>
           <span>Universidad EP de México</span>
         </div>
+        <button id="btn-menu" class="btn-hamburguesa" aria-label="Abrir menú" aria-expanded="false" aria-controls="sidebar-menu">
+          <span></span><span></span><span></span>
+        </button>
       </div>
-      <nav>
-        <button class="nav-item active" data-vista="panel">Panel</button>
-        <button class="nav-item" data-vista="prestamos">Préstamos</button>
-        <button class="nav-item" data-vista="historial">Historial</button>
-        <button class="nav-item" data-vista="libros">Libros</button>
-        <button class="nav-item" data-vista="lectores">Lectores</button>
-        <a class="nav-item nav-item-externo" href="https://sites.google.com/epdemexico.edu.mx/biblioteca-ep/inicio" target="_blank" rel="noopener noreferrer">Consulta la Biblioteca digital ↗</a>
-      </nav>
-      <div class="sidebar-foot">
-        <span>Responsable Ing. Sarahi Ramírez Hernández</span>
-        <button id="btn-password" class="btn-link">Cambiar contraseña</button>
-        <button id="btn-logout" class="btn-link">Cerrar sesión</button>
+      <div class="sidebar-menu" id="sidebar-menu">
+        <nav>
+          <button class="nav-item active" data-vista="panel">Panel</button>
+          <button class="nav-item" data-vista="prestamos">Préstamos</button>
+          <button class="nav-item" data-vista="historial">Historial</button>
+          <button class="nav-item" data-vista="libros">Libros</button>
+          <button class="nav-item" data-vista="lectores">Lectores</button>
+          <a class="nav-item nav-item-externo" href="https://sites.google.com/epdemexico.edu.mx/biblioteca-ep/inicio" target="_blank" rel="noopener noreferrer">Consulta la Biblioteca digital ↗</a>
+        </nav>
+        <div class="sidebar-foot">
+          <span>Responsable Ing. Sarahi Ramírez Hernández</span>
+          <button id="btn-password" class="btn-link">Cambiar contraseña</button>
+          <button id="btn-logout" class="btn-link">Cerrar sesión</button>
+        </div>
       </div>
     </aside>
 
