@@ -16,8 +16,21 @@ const catalogoRoutes = require('./src/routes/catalogo.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// '0.0.0.0' escucha en todas las interfaces de red del servidor, no sólo en
+// localhost: así es accesible por la IP pública o el dominio en producción.
+const HOST = process.env.HOST || '0.0.0.0';
 
-app.use(cors());
+// Detrás de un proxy inverso (Nginx, Apache, IIS con ARR, un balanceador…)
+// Express necesita esto para leer correctamente la IP real del cliente y el
+// protocolo (http/https) que llegó al proxy, vía las cabeceras X-Forwarded-*.
+if (process.env.TRUST_PROXY) app.set('trust proxy', 1);
+
+// CORS_ORIGIN: lista de dominios permitidos separados por coma
+// (ej. "https://biblioteca.epdemexico.edu.mx,https://www.epdemexico.edu.mx").
+// Si no se define, se permite cualquier origen (útil en desarrollo o cuando
+// el frontend se sirve desde este mismo servidor, como aquí).
+const corsOrigenes = (process.env.CORS_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
+app.use(cors(corsOrigenes.length ? { origin: corsOrigenes } : undefined));
 // Límite amplio: la importación masiva de libros (CSV) puede enviar miles de filas.
 app.use(express.json({ limit: '15mb' }));
 app.use(cookieParser());
@@ -88,9 +101,12 @@ app.use((err, req, res, next) => {
   try {
     await initDatabase();
     await ensureAdmin();
-    app.listen(PORT, () => {
+    app.listen(PORT, HOST, () => {
       console.log('\n  Universidad EP de México — Sistema de Gestión de Biblioteca');
-      console.log(`  Servidor listo en  http://localhost:${PORT}\n`);
+      console.log(`  Escuchando en ${HOST}:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
+      console.log(`  Local:   http://localhost:${PORT}`);
+      if (process.env.PUBLIC_URL) console.log(`  Público: ${process.env.PUBLIC_URL}`);
+      else console.log('  Público: usa la IP o el dominio del servidor en el puerto indicado (define PUBLIC_URL en .env para mostrarlo aquí).\n');
     });
   } catch (e) {
     console.error('No se pudo iniciar el servidor:', e.message);

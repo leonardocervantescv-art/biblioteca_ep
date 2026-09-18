@@ -1,7 +1,10 @@
 const jwt = require('jsonwebtoken');
 
-const SECRET = process.env.JWT_SECRET || 'dev-secret';
-const EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET es obligatorio en producción: defínelo en el archivo .env antes de arrancar el servidor.');
+}
+const SECRET = process.env.JWT_SECRET;
+const EXPIRES_IN = process.env.JWT_EXPIRES_IN;
 
 function signToken(user) {
   return jwt.sign(
