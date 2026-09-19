@@ -15,13 +15,13 @@ Operación de préstamo
 El administrador registra el préstamo eligiendo lector y libro (búsqueda por título, autor, tema, palabra clave o código de barras).
 Debe confirmar que el lector presentó identificación válida y que el libro se entrega en buen estado.
 El sistema verifica disponibilidad y observaciones del libro.
-Calcula la fecha de vencimiento a 6 días hábiles (máximo permitido).
+Calcula la fecha de vencimiento a 10 días hábiles (máximo permitido).
 Genera un recibo imprimible con los datos del préstamo, la fecha de vencimiento y los lineamientos de la biblioteca.
 Devolución
 Registro de la devolución indicando el estado del libro. Si se recibe en estado regular o malo, queda la observación en el sistema (aplicar Disposiciones generales del Formato de Préstamo) y el acervo refleja el deterioro.
 
 Renovación
-Renovación en persona, una sola vez, ampliando 6 días hábiles. Requiere registrar una observación en el sistema.
+Renovación en persona, una sola vez, ampliando 10 días hábiles. Requiere registrar una observación en el sistema.
 
 Panel
 Indicadores: títulos, ejemplares totales / disponibles / prestados, lectores activos, préstamos activos, que vencen hoy y vencidos; libros por categoría y últimos préstamos.

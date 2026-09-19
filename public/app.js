@@ -706,7 +706,7 @@ async function renderPrestamos() {
   const cont = $('#vista-prestamos');
   cont.innerHTML = `
     <div class="vista-head">
-      <div><h2>Préstamos</h2><p>Operación de préstamo, devolución y renovación de libros (plazo máximo: 6 días hábiles).</p></div>
+      <div><h2>Préstamos</h2><p>Operación de préstamo, devolución y renovación de libros (plazo máximo: 10 días hábiles).</p></div>
       <button class="btn btn-primary" id="btn-nuevo-prestamo">+ Registrar préstamo</button>
     </div>
     <div class="panel">
@@ -781,7 +781,7 @@ async function modalNuevoPrestamo() {
 
       <div class="form-grid" style="margin-top:1rem">
         <label>Fecha de préstamo<input type="date" name="fecha_prestamo" value="${hoy()}"></label>
-        <label>Días hábiles<input type="number" name="dias_habiles" value="6" min="1" max="6"></label>
+        <label>Días hábiles<input type="number" name="dias_habiles" value="10" min="1" max="10"></label>
       </div>
       <label class="full" style="margin-top:.6rem">Observaciones<input name="observaciones" placeholder="Opcional"></label>
       <label class="check-linea" style="margin-top:.8rem">
@@ -812,7 +812,7 @@ async function modalNuevoPrestamo() {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target));
     if (!fd.lector_id || !fd.libro_id) return toast('Selecciona un lector y un libro', 'error');
-    fd.dias_habiles = Number(fd.dias_habiles) || 6;
+    fd.dias_habiles = Number(fd.dias_habiles) || 10;
     fd.identificacion_verificada = $('#p-identificacion').checked;
     try {
       const p = await api('/prestamos', { method: 'POST', body: fd });
@@ -886,7 +886,7 @@ async function modalRenovar(id) {
     if (p.renovaciones >= 1) return toast('Este préstamo ya fue renovado una vez', 'error');
     abrirModal('Renovar préstamo', `
       <p>Préstamo <strong>${esc(p.folio)}</strong> — ${esc(p.libro_titulo)}<br>
-      Vence: ${fecha(p.fecha_vencimiento)}. La renovación amplía 6 días hábiles.</p>
+      Vence: ${fecha(p.fecha_vencimiento)}. La renovación amplía 10 días hábiles.</p>
       <form id="form-renovar">
         <label>Observación (obligatoria)
           <input name="observacion" required placeholder="Ej. renovación autorizada en persona, sin reservas pendientes">

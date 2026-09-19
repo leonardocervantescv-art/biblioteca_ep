@@ -1,7 +1,7 @@
 // Utilidades de fechas para el cálculo de plazos de préstamo.
-// PR-GE-16: "El tiempo máximo de préstamo de libros es de 6 días hábiles".
+// PR-GE-16: "El tiempo máximo de préstamo de libros es de 10 días hábiles".
 
-const DIAS_HABILES_PRESTAMO = 6;
+const DIAS_HABILES_PRESTAMO = 10;
 
 // Suma `n` días hábiles (lunes a viernes) a una fecha, saltando sábados y
 // domingos. No contempla días festivos oficiales.
