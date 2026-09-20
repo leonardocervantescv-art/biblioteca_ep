@@ -228,6 +228,7 @@ async function renderLibros() {
     <div class="vista-head">
       <div><h2>Registro de libros</h2><p>Acervo de la biblioteca: título, autor, ISBN, editorial, clasificación, código de barras y ubicación.</p></div>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn" id="btn-exportar-libros">Descargar códigos</button>
         <button class="btn" id="btn-importar-libros">Importar CSV</button>
         <button class="btn btn-primary" id="btn-nuevo-libro">+ Nuevo libro</button>
       </div>
@@ -242,13 +243,14 @@ async function renderLibros() {
     </div>`;
   $('#btn-nuevo-libro').addEventListener('click', () => modalLibro());
   $('#btn-importar-libros').addEventListener('click', () => modalImportarCSV());
+  $('#btn-exportar-libros').addEventListener('click', () => descargarLibrosExcel());
   const cats = await api('/libros/categorias').catch(() => []);
   $('#f-libro-cat').insertAdjacentHTML('beforeend', cats.map((c) => `<option>${esc(c)}</option>`).join(''));
   ['f-libro-q', 'f-libro-cat', 'f-libro-disp'].forEach((id) => $(`#${id}`).addEventListener('input', cargarLibros));
   cargarLibros();
 }
 
-async function cargarLibros() {
+function parametrosFiltroLibros() {
   const q = $('#f-libro-q').value.trim();
   const cat = $('#f-libro-cat').value;
   const disp = $('#f-libro-disp').checked;
@@ -256,6 +258,11 @@ async function cargarLibros() {
   if (q) params.set('q', q);
   if (cat) params.set('categoria', cat);
   if (disp) params.set('disponibles', '1');
+  return params;
+}
+
+async function cargarLibros() {
+  const params = parametrosFiltroLibros();
   const tabla = $('#tabla-libros');
   tabla.innerHTML = '<p class="vacio">Cargando…</p>';
   try {
@@ -285,6 +292,32 @@ async function cargarLibros() {
     tabla.querySelectorAll('[data-editar]').forEach((b) => b.addEventListener('click', () => modalLibro(librosCache.find((l) => l.id == b.dataset.editar))));
     tabla.querySelectorAll('[data-eliminar]').forEach((b) => b.addEventListener('click', () => eliminarLibro(b.dataset.eliminar)));
   } catch (err) { tabla.innerHTML = `<p class="vacio">${esc(err.message)}</p>`; }
+}
+
+// Descarga un Excel (.xlsx) con título, autor, categoría y código de los
+// libros registrados, organizado en una hoja por zona/área física (misma
+// agrupación que usa la signatura de ubicación), respetando los filtros
+// activos en la vista.
+async function descargarLibrosExcel() {
+  const params = parametrosFiltroLibros();
+  try {
+    const res = await fetch(`/api/libros/exportar?${params}`, {
+      headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error((data && data.error) || `Error ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'codigos_libros.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 
 function badgeFisico(l) {

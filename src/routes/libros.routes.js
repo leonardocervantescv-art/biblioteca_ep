@@ -1,36 +1,13 @@
 const express = require('express');
+const ExcelJS = require('exceljs');
 const { query } = require('../db');
 const { authRequired } = require('../auth');
 
 const router = express.Router();
 router.use(authRequired);
 
-// Toma las primeras `cantidad` letras (sin acentos ni signos) de un texto,
-// en mayúsculas; si el texto no alcanza, rellena con "X".
-function letrasIniciales(texto, cantidad) {
-  const limpio = String(texto || '')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toUpperCase()
-    .replace(/[^A-Z]/g, '');
-  return (limpio + 'XX').slice(0, cantidad);
-}
-
-// Código de barras: EP + 2 letras del título + 2 letras de la ubicación +
-// 2 dígitos consecutivos (00, 01, 02…) para distinguir ejemplares con el
-// mismo título y la misma ubicación.
-async function generarCodigoBarras(titulo, ubicacion) {
-  const base = 'EP' + letrasIniciales(titulo, 2) + letrasIniciales(ubicacion, 2);
-  for (let n = 0; n < 100; n++) {
-    const cand = base + String(n).padStart(2, '0');
-    const existe = await query('SELECT id FROM libros WHERE codigo_barras = ?', [cand]);
-    if (!existe.length) return cand;
-  }
-  throw new Error('No se pudo generar un código de barras único (ya hay 100 ejemplares con el mismo título y ubicación)');
-}
-
-// GET /api/libros  — catálogo con búsqueda (título, autor, tema, palabra clave, ISBN)
-router.get('/', async (req, res) => {
-  const { q, categoria, disponibles } = req.query;
+// Arma el WHERE/params compartido por el listado y la exportación a Excel.
+function filtroLibros(q, categoria, disponibles) {
   const where = [];
   const params = [];
   if (q) {
@@ -45,6 +22,128 @@ router.get('/', async (req, res) => {
   if (disponibles === '1' || disponibles === 'true') {
     where.push('cantidad_disponible > 0');
   }
+  return { where, params };
+}
+
+// Quita acentos, pasa a mayúsculas y colapsa espacios — para comparar o
+// abreviar texto sin que acentos/espacios de más generen falsos distintos.
+function normalizarTexto(texto) {
+  return String(texto || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Palabras que no aportan al abreviar (artículos, conjunciones); se ignoran
+// al construir las siglas de área/categoría para no gastar letras en ellas.
+const PALABRAS_VACIAS = new Set(['Y', 'DE', 'DEL', 'LA', 'EL', 'LOS', 'LAS', 'EN', 'A', 'PARA', 'AL', 'E']);
+
+// Abrevia un texto de varias palabras: las primeras `letras` de la primera
+// palabra significativa + la inicial de cada palabra significativa
+// siguiente. "Investigación y Metodología" (letras=4) -> "INVEM".
+function abreviarPalabras(texto, letras) {
+  const palabras = normalizarTexto(texto)
+    .split(/[^A-Z]+/)
+    .filter((p) => p && !PALABRAS_VACIAS.has(p));
+  if (!palabras.length) return '';
+  let resultado = palabras[0].slice(0, letras);
+  for (let i = 1; i < palabras.length; i++) resultado += palabras[i][0];
+  return resultado;
+}
+
+// Siglas ya conocidas para las áreas de la biblioteca (columna Ubicación,
+// parte después de "Zona X - "). Si aparece un área nueva que no está en
+// esta lista, se abrevia automáticamente con `abreviarPalabras`.
+const AREAS_CONOCIDAS = {
+  'MEDICINA CLINICA Y ESPECIALIDADES': 'MCE',
+  'ADMINISTRACION Y GESTION EN SALUD': 'AGS',
+  'URGENCIAS, CUIDADOS CRITICOS Y ANESTESIA': 'UCA',
+  ENFERMERIA: 'ENF',
+  'LITERATURA, REVISTAS Y ESPARCIMIENTO': 'LRE',
+  'CIENCIAS BASICAS DE LA SALUD Y FARMACOLOGIA': 'CBF',
+  'BIOETICA Y LEGISLACION EN SALUD': 'BLS',
+  'RECURSOS HUMANOS, LIDERAZGO Y NEGOCIOS': 'RHN',
+  'SALUD PUBLICA, EPIDEMIOLOGIA Y NUTRICION': 'SPN',
+  'INVESTIGACION Y METODOLOGIA': 'IYM',
+  IDIOMAS: 'IDI',
+  'TECNOLOGIA, CIENCIAS EXACTAS Y DIVULGACION': 'TCD',
+  'HISTORIA, ARTE Y CULTURA GENERAL': 'HAC',
+  EDUCACION: 'EDU',
+  'CIENCIAS SOCIALES, POLITICA Y DERECHO': 'CSD',
+  'PSICOLOGIA Y DESARROLLO HUMANO': 'PDH',
+  'PARAPSICOLOGIA Y ESOTERISMO': 'PYE',
+};
+
+// La columna Ubicación viene como "Zona <letra> - <área>" (con espaciados
+// inconsistentes: "Zona  A -", "Zona A- ", etc.). Si no calza con ese
+// patrón (ubicaciones antiguas tipo "Estante A-3", o vacías), se usa "X"
+// de zona y el texto completo como área, para no perder el dato.
+function parseZonaArea(ubicacion) {
+  const texto = String(ubicacion || '').trim();
+  const m = texto.match(/ZONA\s*([A-Za-z])\s*-\s*(.+)/i);
+  if (m) return { zona: m[1].toUpperCase(), area: m[2].trim() };
+  return { zona: 'X', area: texto };
+}
+
+function codigoArea(area) {
+  if (!area) return 'SU'; // sin ubicación
+  const clave = normalizarTexto(area);
+  return AREAS_CONOCIDAS[clave] || abreviarPalabras(area, 3) || 'SU';
+}
+
+// "Cutter" simplificado: apellido del primer autor. Ignora coautores
+// (separados por ";"), notas entre paréntesis ("(editores)") e iniciales
+// sueltas ("G.", "F."), y toma la última palabra "real" que queda —
+// normalmente el apellido.
+function cutterAutor(autor, letras) {
+  const primero = String(autor || '').split(';')[0].replace(/\([^)]*\)/g, '');
+  const palabras = normalizarTexto(primero)
+    .split(/[^A-Z]+/)
+    .filter((p) => p.length >= 3); // descarta iniciales tipo "G", "F"
+  if (!palabras.length) return '';
+  return palabras[palabras.length - 1].slice(0, letras);
+}
+
+// Código de estante: EP-<ZONA>-<ÁREA>-<CATEGORÍA>-<AUTOR>. No es un código
+// de barras para escanear; es una signatura para etiquetar el lomo del
+// libro combinando dónde vive físicamente (zona + área, de la columna
+// Ubicación), de qué trata (categoría) y quién lo escribió (autor).
+//
+// No lleva número de ejemplares ni consecutivo visible. Si dos libros
+// DISTINTOS llegaran a coincidir exactamente en los cuatro elementos (muy
+// raro: mismo autor, misma categoría, misma zona y área), el sistema alarga
+// en silencio la categoría y, si hiciera falta, el autor, hasta que el
+// código sea único — nunca se mezclan dos libros bajo el mismo código.
+async function generarCodigoUbicacion(ubicacion, categoria, autor) {
+  const { zona, area } = parseZonaArea(ubicacion);
+  const areaCod = codigoArea(area);
+
+  for (let letrasCat = 4; letrasCat <= 10; letrasCat++) {
+    const catCod = abreviarPalabras(categoria, letrasCat) || 'GEN';
+    for (let letrasAutor = 3; letrasAutor <= 8; letrasAutor++) {
+      const autorCod = cutterAutor(autor, letrasAutor) || 'SA';
+      const cand = `EP-${zona}-${areaCod}-${catCod}-${autorCod}`;
+      const existe = await query('SELECT id FROM libros WHERE codigo_barras = ?', [cand]);
+      if (!existe.length) return cand;
+    }
+  }
+
+  // Última salida, muy poco probable: ni ampliando categoría ni autor se
+  // logró un código libre. Se agrega un número aleatorio para garantizar
+  // unicidad.
+  for (let intento = 0; intento < 10; intento++) {
+    const cand = `EP-${zona}-${areaCod}-` + String(Math.floor(100000 + Math.random() * 900000));
+    const existe = await query('SELECT id FROM libros WHERE codigo_barras = ?', [cand]);
+    if (!existe.length) return cand;
+  }
+  throw new Error('No se pudo generar un código único para este libro');
+}
+
+// GET /api/libros  — catálogo con búsqueda (título, autor, tema, palabra clave, ISBN)
+router.get('/', async (req, res) => {
+  const { q, categoria, disponibles } = req.query;
+  const { where, params } = filtroLibros(q, categoria, disponibles);
   const sql = `SELECT * FROM libros ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY titulo ASC`;
   res.json(await query(sql, params));
 });
@@ -55,6 +154,74 @@ router.get('/categorias', async (req, res) => {
     'SELECT DISTINCT categoria FROM libros WHERE categoria IS NOT NULL AND categoria <> "" ORDER BY categoria'
   );
   res.json(rows.map((r) => r.categoria));
+});
+
+// Nombre de hoja de Excel válido a partir de un texto cualquiera: sin
+// caracteres prohibidos, máximo 31 caracteres, y sin repetirse dentro del
+// mismo libro.
+function nombreHojaUnico(texto, usados) {
+  const base = String(texto || 'Sin ubicación')
+    .replace(/[:\\/?*[\]]/g, ' ')
+    .trim()
+    .slice(0, 31) || 'Sin ubicación';
+  let nombre = base;
+  let n = 2;
+  while (usados.has(nombre.toLowerCase())) {
+    const sufijo = ` (${n++})`;
+    nombre = base.slice(0, 31 - sufijo.length) + sufijo;
+  }
+  usados.add(nombre.toLowerCase());
+  return nombre;
+}
+
+// GET /api/libros/exportar  — Excel (.xlsx) con los datos de la etiqueta de
+// cada libro, organizado en una hoja por zona/área física (misma agrupación
+// que usa la signatura de ubicación), para poder imprimir las etiquetas
+// recorriendo el acervo estante por estante. Respeta los mismos filtros que
+// el listado.
+router.get('/exportar', async (req, res) => {
+  const { q, categoria, disponibles } = req.query;
+  const { where, params } = filtroLibros(q, categoria, disponibles);
+  const sql = `SELECT titulo, autor, categoria, ubicacion, codigo_barras FROM libros
+    ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY ubicacion ASC, categoria ASC, titulo ASC`;
+  const libros = await query(sql, params);
+
+  // Agrupa por zona + área ya interpretadas (parseZonaArea), no por el texto
+  // crudo de "ubicacion": así "Zona A - X" y "Zona  A - X" (espaciados
+  // distintos) caen en la misma hoja, igual que hace el generador de código.
+  const grupos = new Map();
+  for (const l of libros) {
+    const { zona, area } = parseZonaArea(l.ubicacion);
+    const clave = `${zona}|${normalizarTexto(area)}`;
+    if (!grupos.has(clave)) {
+      grupos.set(clave, { etiqueta: area ? `Zona ${zona} - ${area}` : 'Sin ubicación', filas: [] });
+    }
+    grupos.get(clave).filas.push(l);
+  }
+  if (!grupos.size) grupos.set('', { etiqueta: 'Sin ubicación', filas: [] });
+
+  const gruposOrdenados = [...grupos.values()].sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, 'es'));
+
+  const libro = new ExcelJS.Workbook();
+  const nombresUsados = new Set();
+  for (const { etiqueta, filas } of gruposOrdenados) {
+    const hoja = libro.addWorksheet(nombreHojaUnico(etiqueta, nombresUsados));
+    hoja.columns = [
+      { header: 'Título', key: 'titulo', width: 50 },
+      { header: 'Autor', key: 'autor', width: 30 },
+      { header: 'Categoría', key: 'categoria', width: 25 },
+      { header: 'Código', key: 'codigo_barras', width: 22 },
+    ];
+    hoja.getRow(1).font = { bold: true };
+    filas.forEach((l) => hoja.addRow({
+      titulo: l.titulo, autor: l.autor, categoria: l.categoria || '—', codigo_barras: l.codigo_barras,
+    }));
+  }
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="codigos_libros.xlsx"');
+  await libro.xlsx.write(res);
+  res.end();
 });
 
 // GET /api/libros/:id  (incluye historial de préstamos del ejemplar)
@@ -82,7 +249,7 @@ router.post('/', async (req, res) => {
     const dup = await query('SELECT id FROM libros WHERE codigo_barras = ?', [codigo]);
     if (dup.length) return res.status(409).json({ error: 'Ya existe un libro con ese código de barras' });
   } else {
-    codigo = await generarCodigoBarras(b.titulo, b.ubicacion);
+    codigo = await generarCodigoUbicacion(b.ubicacion, b.categoria, b.autor);
   }
   const total = Math.max(1, parseInt(b.cantidad_total, 10) || 1);
   const result = await query(
@@ -222,7 +389,7 @@ router.post('/importar', async (req, res) => {
           continue;
         }
       } else {
-        codigo = await generarCodigoBarras(d.titulo, d.ubicacion);
+        codigo = await generarCodigoUbicacion(d.ubicacion, d.categoria, d.autor);
       }
       codigosVistos.add(codigo);
 
