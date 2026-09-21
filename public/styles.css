@@ -99,6 +99,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--azul-claro)
 .panel-head { padding: .9rem 1.1rem; border-bottom: 1px solid var(--gris-borde); font-weight: 700; color: var(--azul); font-size: .95rem; }
 .filtros { display: flex; gap: .6rem; flex-wrap: wrap; padding: .9rem 1.1rem; align-items: center; }
 .filtros input, .filtros select { min-width: 140px; }
+/* Los contenedores de tabla (tabla-libros, tabla-lectores, tabla-prestamos,
+   tabla-historial) necesitan su propio scroll horizontal: el .panel que los
+   envuelve tiene overflow:hidden (para las esquinas redondeadas), así que
+   sin esto las columnas que no caben —incluida la de Ver/Editar/Eliminar—
+   quedarían recortadas e inaccesibles en vez de deslizables. */
+[id^="tabla-"] { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; font-size: .88rem; }
 th, td { text-align: left; padding: .65rem .9rem; border-bottom: 1px solid var(--gris-borde); }
 th { background: #f8fafc; font-size: .76rem; text-transform: uppercase; letter-spacing: .4px; color: var(--texto-suave); }
@@ -159,6 +165,13 @@ tbody tr:hover { background: #f8fafc; }
   .sidebar.abierta .sidebar-menu { display: flex; }
   .form-grid { grid-template-columns: 1fr; }
   .contenido { padding: 1.2rem; }
+  [id^="tabla-"]:has(table)::before {
+    content: "↔ Desliza para ver más columnas y acciones";
+    display: block;
+    font-size: .72rem;
+    color: var(--texto-suave);
+    padding: 0 1.1rem .5rem;
+  }
 }
 
 @media print {
