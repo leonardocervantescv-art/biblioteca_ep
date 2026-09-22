@@ -4,6 +4,24 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
+// Salvavidas para toda la app:
+// - uncaughtException: errores síncronos que se escapan sin try/catch (por
+//   ejemplo, que falte una variable obligatoria en .env al cargar un módulo).
+//   Se muestra un mensaje claro y se cierra — igual que antes, pero legible.
+// - unhandledRejection: errores dentro de una ruta `async` que nadie captura.
+//   Antes esto tumbaba TODO el servidor para todos los usuarios con sólo un
+//   dato faltante en una petición (así se cayó todo el proceso al iniciar
+//   sesión sin JWT_SECRET). Ahora sólo se registra en consola: esa petición
+//   se queda sin respuesta, pero el resto de la biblioteca sigue funcionando.
+process.on('uncaughtException', (err) => {
+  console.error('\n  No se pudo iniciar/mantener el servidor:', err.message);
+  console.error('  Revisa tu archivo .env (compáralo con .env.example) y vuelve a intentar.\n');
+  process.exit(1);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('Error no controlado en una petición (no se detuvo el servidor):', err);
+});
+
 const { initDatabase, query } = require('./src/db');
 const { authRequired } = require('./src/auth');
 const { ensureAdmin } = require('./src/seed');
