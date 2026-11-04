@@ -1,21 +1,4 @@
-<<<<<<< HEAD
--- ============================================================================
---  Sistema de Gestión de Biblioteca — Universidad EP de México
---  Procedimiento PR-GE-16: Préstamos y salvaguardo de libros dentro de la
---  biblioteca.
---
---  El único usuario del sistema es el ADMINISTRADOR (Responsable de Biblioteca),
---  quien realiza toda la gestión: alta de libros, registro de lectores y
---  operación de préstamos, devoluciones y renovaciones.
--- ============================================================================
 
--- ----------------------------------------------------------------------------
---  usuarios: cuentas que pueden iniciar sesión en el sistema.
---  En la práctica sólo existe el administrador.
--- ----------------------------------------------------------------------------
-=======
-
->>>>>>> 0981d66 (Usuarios para otros campus)
 CREATE TABLE IF NOT EXISTS usuarios (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   nombre        VARCHAR(150) NOT NULL,
@@ -26,16 +9,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   creado_en     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-<<<<<<< HEAD
--- ----------------------------------------------------------------------------
---  lectores: personas a las que se les puede prestar un libro.
---  Políticas PR-GE-16: sólo estudiantes, personal administrativo y personal
---  académico. El préstamo es gratuito y requiere identificación válida
---  (estudiantes: credencial de estudiante; personal: INE).
--- ----------------------------------------------------------------------------
-=======
 
->>>>>>> 0981d66 (Usuarios para otros campus)
 CREATE TABLE IF NOT EXISTS lectores (
   id                  INT AUTO_INCREMENT PRIMARY KEY,
   nombre              VARCHAR(150) NOT NULL,
@@ -82,13 +56,8 @@ CREATE TABLE IF NOT EXISTS libros (
 
 -- ----------------------------------------------------------------------------
 --  prestamos: operación de préstamo registrada por el Responsable de Biblioteca.
-<<<<<<< HEAD
---  Se permite una renovación en persona si no hay otras reservas para el mismo
---  libro (ver DIAS_HABILES_PRESTAMO en src/util/fechas.js para el plazo vigente).
-=======
 --  Plazo máximo: 10 días hábiles. Se permite una renovación en persona si no hay
 --  otras reservas para el mismo libro.
->>>>>>> 0981d66 (Usuarios para otros campus)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS prestamos (
   id                     INT AUTO_INCREMENT PRIMARY KEY,
