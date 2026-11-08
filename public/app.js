@@ -112,6 +112,7 @@ const vistas = {
   historial: renderHistorial,
   libros: renderLibros,
   lectores: renderLectores,
+  administradores: renderAdministradores,
 };
 let vistaActual = 'panel';
 
@@ -141,12 +142,31 @@ $('#btn-menu').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarMenu(); });
 
 /* ---------------------------- Inicio ---------------------------- */
+const ROL = { admin: 'Administrador de campus', superadmin: 'Superadministrador' };
+const esSuperadmin = () => !!(state.usuario && state.usuario.rol === 'superadmin');
+
+// Muestra el campus y el nombre de quien tiene la sesión, y sólo ofrece la
+// sección de administradores al superadministrador.
+function pintarSesion() {
+  const u = state.usuario || {};
+  $('#sidebar-campus').textContent = u.campus ? `Campus: ${u.campus.nombre}` : '';
+  $('#sidebar-usuario').textContent = u.nombre ? `${u.rol === 'superadmin' ? ROL.superadmin : 'Responsable'} ${u.nombre}` : '';
+  $('#nav-administradores').hidden = !esSuperadmin();
+}
+
 function iniciarApp() {
   $('#pantalla-login').hidden = true;
   $('#app').hidden = false;
-  const elUsuario = $('#sidebar-usuario');
-  if (elUsuario) elUsuario.textContent = state.usuario ? state.usuario.nombre : '';
+  pintarSesion();
   irA('panel');
+}
+
+// El rol y el campus los decide el servidor: se vuelven a pedir al reabrir la
+// página (por si cambiaron o la sesión es de una versión anterior).
+async function refrescarPerfil() {
+  state.usuario = await api('/auth/perfil');
+  localStorage.setItem('bib_usuario', JSON.stringify(state.usuario));
+  pintarSesion();
 }
 
 /* ==========================================================================
@@ -1065,5 +1085,187 @@ function descargarHistorialCSV() {
   URL.revokeObjectURL(url);
 }
 
+/* ==========================================================================
+   VISTA: CAMPUS Y ADMINISTRADORES (sólo superadministrador)
+   Cada campus tiene su propio catálogo, lectores, préstamos y administradores.
+   ========================================================================== */
+let campusCache = [];
+let adminsCache = [];
+
+async function renderAdministradores() {
+  const cont = $('#vista-administradores');
+  if (!esSuperadmin()) { cont.innerHTML = '<p class="vacio">No tienes permiso para ver esta sección.</p>'; return; }
+  cont.innerHTML = `
+    <div class="vista-head">
+      <div><h2>Campus y administradores</h2>
+      <p>Cada campus maneja su propio catálogo, lectores y préstamos. Cada administrador sólo ve y modifica los datos de su campus.</p></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head fila-head"><span>Campus</span>
+        <button class="btn btn-sm btn-primary" id="btn-nuevo-campus">+ Nuevo campus</button></div>
+      <div id="tabla-campus"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head fila-head"><span>Administradores</span>
+        <button class="btn btn-sm btn-primary" id="btn-nuevo-admin">+ Nuevo administrador</button></div>
+      <div class="filtros"><select id="f-admin-campus"><option value="">Todos los campus</option></select></div>
+      <div id="tabla-admins"></div>
+    </div>`;
+  $('#btn-nuevo-campus').addEventListener('click', () => modalCampus());
+  $('#btn-nuevo-admin').addEventListener('click', () => modalAdmin());
+  $('#f-admin-campus').addEventListener('input', pintarAdmins);
+  await cargarCampusYAdmins();
+}
+
+async function cargarCampusYAdmins() {
+  try {
+    [campusCache, adminsCache] = await Promise.all([api('/campus'), api('/usuarios')]);
+  } catch (err) {
+    $('#tabla-campus').innerHTML = `<p class="vacio">${esc(err.message)}</p>`;
+    return;
+  }
+  pintarCampus();
+  const sel = $('#f-admin-campus');
+  const actual = sel.value;
+  sel.innerHTML = '<option value="">Todos los campus</option>' +
+    campusCache.map((c) => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+  sel.value = actual;
+  pintarAdmins();
+}
+
+const badgeEstado = (activo) => (activo ? '<span class="badge verde">Activo</span>' : '<span class="badge gris">Desactivado</span>');
+
+function pintarCampus() {
+  const tabla = $('#tabla-campus');
+  tabla.innerHTML = `
+    <table>
+      <thead><tr><th>Campus</th><th>Clave</th><th>Libros</th><th>Lectores</th><th>Admins</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        ${campusCache.map((c) => `
+          <tr>
+            <td><strong>${esc(c.nombre)}</strong>${c.ciudad ? '<br><small>' + esc(c.ciudad) + '</small>' : ''}</td>
+            <td><code>${esc(c.clave)}</code></td>
+            <td>${c.libros}</td><td>${c.lectores}</td><td>${c.administradores}</td>
+            <td>${badgeEstado(c.activo)}</td>
+            <td><div class="acciones-fila"><button class="btn btn-sm" data-editar-campus="${c.id}">Editar</button></div></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+  $$('[data-editar-campus]', tabla).forEach((b) =>
+    b.addEventListener('click', () => modalCampus(campusCache.find((c) => c.id == b.dataset.editarCampus))));
+}
+
+function pintarAdmins() {
+  const filtro = $('#f-admin-campus').value;
+  const lista = adminsCache.filter((u) => !filtro || String(u.campus_id) === filtro);
+  const tabla = $('#tabla-admins');
+  if (!lista.length) { tabla.innerHTML = '<p class="vacio">No hay administradores en este campus.</p>'; return; }
+  tabla.innerHTML = `
+    <table>
+      <thead><tr><th>Nombre / correo</th><th>Rol</th><th>Campus</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        ${lista.map((u) => `
+          <tr>
+            <td><strong>${esc(u.nombre)}</strong>${u.id === state.usuario.id ? ' <span class="badge azul">tú</span>' : ''}<br><small>${esc(u.email)}</small></td>
+            <td>${esc(ROL[u.rol] || u.rol)}</td>
+            <td>${esc(u.campus_nombre)}</td>
+            <td>${badgeEstado(u.activo)}</td>
+            <td><div class="acciones-fila"><button class="btn btn-sm" data-editar-admin="${u.id}">Editar</button></div></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+  $$('[data-editar-admin]', tabla).forEach((b) =>
+    b.addEventListener('click', () => modalAdmin(adminsCache.find((u) => u.id == b.dataset.editarAdmin))));
+}
+
+function modalCampus(campus = null) {
+  const c = campus || {};
+  abrirModal(campus ? 'Editar campus' : 'Nuevo campus', `
+    <form id="form-campus">
+      <div class="form-grid">
+        <label class="full">Nombre del campus<input name="nombre" value="${esc(c.nombre || '')}" placeholder="Ej. Campus Guadalajara" required></label>
+        <label>Ciudad<input name="ciudad" value="${esc(c.ciudad || '')}"></label>
+        <label>Clave (dirección pública)
+          <input name="clave" value="${esc(c.clave || '')}" placeholder="Automática si se deja vacía" ${campus ? 'readonly' : ''}>
+        </label>
+        ${campus ? `<label class="check-linea full"><input type="checkbox" name="activo" ${c.activo ? 'checked' : ''}> Campus activo</label>` : ''}
+      </div>
+      <p class="ayuda">${campus
+        ? 'La clave no se puede cambiar. Si desactivas el campus, sus administradores no podrán entrar y deja de aparecer en el catálogo de los estudiantes; no se borra ningún dato.'
+        : 'Al crearlo estará vacío: después agrega a su administrador para que cargue su catálogo.'}</p>
+      <div class="form-actions">
+        <button type="button" class="btn" data-cerrar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">${campus ? 'Guardar cambios' : 'Crear campus'}</button>
+      </div>
+    </form>`);
+  $('#form-campus').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const body = { nombre: f.nombre.value, ciudad: f.ciudad.value };
+    if (!campus) body.clave = f.clave.value;
+    if (campus) body.activo = f.activo.checked;
+    try {
+      if (campus) await api(`/campus/${campus.id}`, { method: 'PUT', body });
+      else await api('/campus', { method: 'POST', body });
+      cerrarModal();
+      toast(campus ? 'Campus actualizado' : 'Campus creado');
+      if (campus && campus.id === state.usuario.campus.id) await refrescarPerfil();
+      cargarCampusYAdmins();
+    } catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+function modalAdmin(admin = null) {
+  const u = admin || {};
+  const esYo = !!admin && admin.id === state.usuario.id;
+  const campusOpc = campusCache.filter((c) => c.activo || c.id === u.campus_id);
+  abrirModal(admin ? 'Editar administrador' : 'Nuevo administrador', `
+    <form id="form-admin">
+      <div class="form-grid">
+        <label class="full">Nombre completo<input name="nombre" value="${esc(u.nombre || '')}" required></label>
+        <label class="full">Correo electrónico (con él inicia sesión)<input name="email" type="email" value="${esc(u.email || '')}" required autocomplete="off"></label>
+        <label>Campus
+          <select name="campus_id" required>
+            ${campusOpc.map((c) => `<option value="${c.id}" ${c.id === u.campus_id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
+          </select>
+        </label>
+        <label>Rol
+          <select name="rol" ${esYo ? 'disabled' : ''}>
+            ${Object.entries(ROL).map(([k, v]) => `<option value="${k}" ${(u.rol || 'admin') === k ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </label>
+        <label class="full">${admin ? 'Nueva contraseña (vacía = no cambiarla)' : 'Contraseña inicial'}
+          <input name="password" type="password" minlength="6" autocomplete="new-password" ${admin ? '' : 'required'}>
+        </label>
+        ${admin ? `<label class="check-linea full"><input type="checkbox" name="activo" ${u.activo ? 'checked' : ''} ${esYo ? 'disabled' : ''}> Cuenta activa</label>` : ''}
+      </div>
+      <p class="ayuda">El <strong>administrador de campus</strong> sólo ve y modifica los libros, lectores y préstamos de su campus.
+        El <strong>superadministrador</strong> además crea campus y administradores. Contraseña de al menos 6 caracteres.${esYo ? ' No puedes desactivarte ni cambiar tu propio rol.' : ''}</p>
+      <div class="form-actions">
+        <button type="button" class="btn" data-cerrar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">${admin ? 'Guardar cambios' : 'Crear administrador'}</button>
+      </div>
+    </form>`);
+  $('#form-admin').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const body = { nombre: f.nombre.value, email: f.email.value, campus_id: Number(f.campus_id.value) };
+    if (!f.rol.disabled) body.rol = f.rol.value;
+    if (f.password.value) body.password = f.password.value;
+    if (admin && !f.activo.disabled) body.activo = f.activo.checked;
+    try {
+      if (admin) await api(`/usuarios/${admin.id}`, { method: 'PUT', body });
+      else await api('/usuarios', { method: 'POST', body });
+      cerrarModal();
+      toast(admin ? 'Administrador actualizado' : 'Administrador creado');
+      if (esYo) await refrescarPerfil();
+      cargarCampusYAdmins();
+    } catch (err) { toast(err.message, 'error'); }
+  });
+}
+
 /* ---------------------------- Arranque ---------------------------- */
-if (state.token && state.usuario) iniciarApp();
+if (state.token && state.usuario) {
+  // si el token expiró, api() ya cerró la sesión y no hay que abrir la app
+  refrescarPerfil().catch(() => {}).finally(() => { if (state.token) iniciarApp(); });
+}

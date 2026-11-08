@@ -25,9 +25,22 @@
       y debe realizarse directamente en la biblioteca. Es requisito indispensable
       presentar tu <strong>credencial estudiantil</strong> para poder realizar la solicitud.
     </div>
+        <div class="cat-aviso">
+      <strong>Biblioteca Digital:</strong> Aquí puedes acceder a los libros digitales
+      <strong>
+        <a href="https://sites.google.com/epdemexico.edu.mx/biblioteca-ep/inicio" target="_blank" rel="noopener noreferrer">Consulta la Biblioteca digital ↗</a>
+      </strong>
+    </div>
+    <!--
+        <div class="d-grid gap-2 col-6 mx-auto mb-5">  
+      <a class="btn btn-primary" href="https://sites.google.com/epdemexico.edu.mx/biblioteca-ep/inicio" target="_blank" rel="noopener noreferrer">Consulta la Biblioteca digital ↗</a>
+    </div>
+    -->
+
+    
 
     <div class="vista-head">
-      <div>
+      <div d-grid gap-2 d-md-block>
         <h2>Catálogo de libros</h2>
         <p>Consulta libros disponibles en la biblioteca.</p>
       </div>
@@ -42,6 +55,7 @@
           </button>
         </div>
         <div class="filtros" id="cat-filtros">
+          <select id="f-cat-campus" aria-label="Campus" hidden></select>
           <input type="search" id="f-cat-q" placeholder="Buscar por título, autor, tema o palabra clave…">
           <select id="f-cat-categoria"><option value="">Todas las categorías</option></select>
           <select id="f-cat-disponibilidad">

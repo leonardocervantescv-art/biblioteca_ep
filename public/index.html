@@ -46,10 +46,12 @@
           <button class="nav-item" data-vista="historial">Historial</button>
           <button class="nav-item" data-vista="libros">Libros</button>
           <button class="nav-item" data-vista="lectores">Lectores</button>
-          <a class="nav-item nav-item-externo" href="https://sites.google.com/epdemexico.edu.mx/biblioteca-ep/inicio" target="_blank" rel="noopener noreferrer">Consulta la Biblioteca digital ↗</a>
+          <button class="nav-item" data-vista="administradores" id="nav-administradores" hidden>Campus y administradores</button>
+          <!-- <a class="nav-item nav-item-externo" href="https://sites.google.com/epdemexico.edu.mx/biblioteca-ep/inicio" target="_blank" rel="noopener noreferrer">Consulta la Biblioteca digital ↗</a> !-->
         </nav>
         <div class="sidebar-foot">
-          <span>Responsable Ing. Sarahi Ramírez Hernández</span>
+          <span id="sidebar-campus" class="sidebar-campus"></span>
+          <span id="sidebar-usuario"></span>
           <button id="btn-password" class="btn-link">Cambiar contraseña</button>
           <button id="btn-logout" class="btn-link">Cerrar sesión</button>
         </div>
@@ -62,6 +64,7 @@
       <div id="vista-historial" class="vista" hidden></div>
       <div id="vista-libros" class="vista" hidden></div>
       <div id="vista-lectores" class="vista" hidden></div>
+      <div id="vista-administradores" class="vista" hidden></div>
     </main>
   </div>
 

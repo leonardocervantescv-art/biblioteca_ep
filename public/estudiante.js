@@ -7,6 +7,8 @@ const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fecha = (v) => (v ? new Date(v + 'T00:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 
+let campusActual = null; // clave del campus que se consulta
+
 async function api(ruta) {
   const res = await fetch(`/api/catalogo${ruta}`);
   const data = await res.json().catch(() => null);
@@ -32,6 +34,7 @@ async function cargarCatalogo() {
   if (q) params.set('q', q);
   if (categoria) params.set('categoria', categoria);
   if (disponibilidad) params.set('disponibilidad', disponibilidad);
+  if (campusActual) params.set('campus', campusActual);
 
   const cont = $('#cat-resultados');
   cont.innerHTML = '<p class="vacio">Cargando catálogo…</p>';
@@ -71,9 +74,38 @@ function iniciarToggleFiltros() {
   });
 }
 
+async function cargarCategorias() {
+  const sel = $('#f-cat-categoria');
+  sel.innerHTML = '<option value="">Todas las categorías</option>';
+  const categorias = await api(`/categorias${campusActual ? '?campus=' + encodeURIComponent(campusActual) : ''}`).catch(() => []);
+  sel.insertAdjacentHTML('beforeend', categorias.map((c) => `<option>${esc(c)}</option>`).join(''));
+}
+
+// Cada campus tiene su propio catálogo. El selector sólo aparece si hay más de
+// uno; el elegido se recuerda y puede compartirse con ?campus=<clave>.
+async function iniciarCampus() {
+  const sel = $('#f-cat-campus');
+  const campus = await api('/campus').catch(() => []);
+  if (!campus.length) return;
+  const guardado = (() => { try { return localStorage.getItem('bib_campus'); } catch { return null; } })();
+  const pedido = new URLSearchParams(location.search).get('campus') || guardado;
+  campusActual = (campus.find((c) => c.clave === pedido) || campus[0]).clave;
+  if (campus.length < 2) return;
+  sel.innerHTML = campus.map((c) => `<option value="${esc(c.clave)}">${esc(c.nombre)}</option>`).join('');
+  sel.value = campusActual;
+  sel.hidden = false;
+  sel.addEventListener('input', async () => {
+    campusActual = sel.value;
+    try { localStorage.setItem('bib_campus', campusActual); } catch { /* sin almacenamiento */ }
+    history.replaceState(null, '', `?campus=${encodeURIComponent(campusActual)}`);
+    await cargarCategorias();
+    cargarCatalogo();
+  });
+}
+
 async function iniciar() {
-  const categorias = await api('/categorias').catch(() => []);
-  $('#f-cat-categoria').insertAdjacentHTML('beforeend', categorias.map((c) => `<option>${esc(c)}</option>`).join(''));
+  await iniciarCampus();
+  await cargarCategorias();
   ['f-cat-q', 'f-cat-categoria', 'f-cat-disponibilidad'].forEach((id) => $(`#${id}`).addEventListener('input', cargarCatalogo));
   iniciarToggleFiltros();
   cargarCatalogo();

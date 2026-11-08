@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
-const { initDatabase, query, getPool } = require('./db');
-require('dotenv').config();
+const config = require('./config/env');
+const { initDatabase, getPool } = require('./config/database');
+const usuarioModel = require('./models/usuario.model');
+const campusModel = require('./models/campus.model');
 
 // -------------------------------------------------------------------------
 //  Bootstrap de la cuenta de administrador.
@@ -13,18 +15,19 @@ require('dotenv').config();
 //  datos del archivo .env (ADMIN_NOMBRE / ADMIN_EMAIL / ADMIN_PASSWORD).
 // -------------------------------------------------------------------------
 async function ensureAdmin() {
-  const [{ n }] = await query('SELECT COUNT(*) AS n FROM usuarios');
-  if (n > 0) return; // ya existe al menos un administrador
+  if ((await usuarioModel.contar()) > 0) return; // ya existe al menos un administrador
 
-  const nombre = process.env.ADMIN_NOMBRE;
-  const email = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
+  const { nombre, email, password } = config.admin;
+  if (!email || !password) {
+    throw new Error('No hay usuarios: define ADMIN_EMAIL y ADMIN_PASSWORD en .env para crear el administrador inicial.');
+  }
 
-  const hash = await bcrypt.hash(password, 10);
-  await query(
-    'INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, "admin")',
-    [nombre, email, hash]
-  );
+  // La migración multi-campus siempre deja un campus "principal"; el primer
+  // usuario es superadmin (crea campus y administradores de otros campus).
+  const campus = await campusModel.buscarPorClave('principal') || await campusModel.primeroActivo();
+  await usuarioModel.crear({
+    nombre, email, rol: 'superadmin', campusId: campus.id, passwordHash: await bcrypt.hash(password, 10),
+  });
 
   console.log('  Cuenta de administrador creada.');
   console.log(`  Acceso:  ${email}  /  ${password}`);
