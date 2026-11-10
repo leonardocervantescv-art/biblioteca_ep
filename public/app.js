@@ -152,7 +152,13 @@ function pintarSesion() {
   $('#sidebar-campus').textContent = u.campus ? `Campus: ${u.campus.nombre}` : '';
   $('#sidebar-usuario').textContent = u.nombre ? `${u.rol === 'superadmin' ? ROL.superadmin : 'Responsable'} ${u.nombre}` : '';
   $('#nav-administradores').hidden = !esSuperadmin();
+  const enlace = $('#enlace-estudiante');
+  enlace.hidden = !u.campus;
+  if (u.campus) enlace.href = enlaceEstudiante(u.campus.clave);
 }
+
+// Dirección de la vista pública del estudiante de un campus.
+const enlaceEstudiante = (clave) => `${location.origin}/estudiante.html?campus=${encodeURIComponent(clave)}`;
 
 function iniciarApp() {
   $('#pantalla-login').hidden = true;
@@ -615,11 +621,14 @@ async function renderLectores() {
   cont.innerHTML = `
     <div class="vista-head">
       <div><h2>Lectores</h2><p>Personas autorizadas para préstamo: estudiantes (credencial), personal administrativo y académico (INE).</p></div>
-      <button class="btn btn-primary" id="btn-nuevo-lector">+ Nuevo lector</button>
+      <div class="acciones-fila">
+        <button class="btn" id="btn-importar-lectores">Importar CSV</button>
+        <button class="btn btn-primary" id="btn-nuevo-lector">+ Nuevo lector</button>
+      </div>
     </div>
     <div class="panel">
       <div class="filtros">
-        <input type="search" id="f-lector-q" placeholder="Buscar por nombre, matrícula, identificación…">
+        <input type="search" id="f-lector-q" placeholder="Buscar por nombre, matrícula o correo…">
         <select id="f-lector-tipo">
           <option value="">Todos los tipos</option>
           ${Object.entries(TIPO_LECTOR).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
@@ -628,6 +637,7 @@ async function renderLectores() {
       <div id="tabla-lectores"></div>
     </div>`;
   $('#btn-nuevo-lector').addEventListener('click', () => modalLector());
+  $('#btn-importar-lectores').addEventListener('click', () => modalImportarLectores());
   ['f-lector-q', 'f-lector-tipo'].forEach((id) => $(`#${id}`).addEventListener('input', cargarLectores));
   cargarLectores();
 }
@@ -649,7 +659,7 @@ async function cargarLectores() {
             <tr>
               <td><strong>${esc(l.nombre)}</strong>${l.matricula ? '<br><span style="color:var(--texto-suave)">' + esc(l.matricula) + '</span>' : ''}</td>
               <td>${TIPO_LECTOR[l.tipo]}</td>
-              <td>${ID_LECTOR[l.identificacion_tipo]}<br><span style="color:var(--texto-suave)">${esc(l.identificacion_num)}</span></td>
+              <td>${ID_LECTOR[l.identificacion_tipo]}</td>
               <td>${esc(l.carrera_area || '—')}</td>
               <td>${esc(l.email || '—')}<br><span style="color:var(--texto-suave)">${esc(l.telefono || '')}</span></td>
               <td>${l.activo ? '<span class="badge verde">Activo</span>' : '<span class="badge gris">Inactivo</span>'}</td>
@@ -683,7 +693,6 @@ function modalLector(lector = null) {
             ${Object.entries(ID_LECTOR).map(([k, v]) => `<option value="${k}" ${l.identificacion_tipo === k ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </label>
-        <label>Número de identificación<input name="identificacion_num" value="${esc(l.identificacion_num || '')}" required></label>
         <label>Matrícula (si aplica)<input name="matricula" value="${esc(l.matricula || '')}"></label>
         <label class="full">Carrera / Área<input name="carrera_area" value="${esc(l.carrera_area || '')}"></label>
         <label>Correo electrónico<input name="email" type="email" value="${esc(l.email || '')}"></label>
@@ -718,6 +727,150 @@ function modalLector(lector = null) {
   });
 }
 
+// Columnas reconocidas del CSV de lectores (encabezados ya normalizados).
+const ALIAS_LECTORES = {
+  nombre: 'nombre', nombre_completo: 'nombre', alumno: 'nombre', estudiante: 'nombre', name: 'nombre',
+  matricula: 'matricula', matricula_alumno: 'matricula', no_control: 'matricula', numero_de_control: 'matricula',
+  carrera: 'carrera_area', carrera_area: 'carrera_area', area: 'carrera_area', departamento: 'carrera_area', programa: 'carrera_area',
+  correo: 'email', correo_electronico: 'email', email: 'email', mail: 'email',
+  telefono: 'telefono', celular: 'telefono', tel: 'telefono', phone: 'telefono',
+};
+
+function csvALectores(texto) {
+  const filas = parseCSV(texto);
+  if (filas.length < 2) throw new Error('El archivo necesita una fila de encabezados y al menos un lector.');
+  const encabezados = filas[0].map((h) => ALIAS_LECTORES[normalizarClave(h)] || null);
+  const sinReconocer = filas[0].filter((h, i) => !encabezados[i] && String(h).trim() !== '');
+  if (!encabezados.includes('nombre')) throw new Error('El CSV debe tener al menos la columna "nombre".');
+  const lectores = filas.slice(1).map((f) => {
+    const obj = {};
+    encabezados.forEach((clave, i) => { if (clave && !obj[clave]) obj[clave] = (f[i] ?? '').trim(); });
+    return obj;
+  });
+  return { lectores, columnas: [...new Set(encabezados.filter(Boolean))], sinReconocer };
+}
+
+function descargarPlantillaLectores() {
+  const contenido =
+    'nombre,matricula,carrera,correo,telefono\n' +
+    '"María López Hernández","20230145","Licenciatura en Derecho","maria.lopez@correo.com","5512345678"\n' +
+    '"Juan Pérez Soto","20230212","Ingeniería en Sistemas","",""\n';
+  const url = URL.createObjectURL(new Blob(['﻿' + contenido], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'plantilla_lectores.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function modalImportarLectores() {
+  abrirModal('Importar lectores desde CSV', `
+    <p class="ayuda" style="margin-top:0">
+      El archivo debe tener una fila de encabezados. Columnas reconocidas:
+      <strong>nombre, matricula, carrera, correo, telefono</strong>. Sólo
+      <strong>nombre</strong> es obligatoria. Separador: coma, punto y coma o tabulación.
+      Todos los lectores del archivo se registran con el tipo que elijas aquí abajo.
+    </p>
+    <button type="button" class="btn btn-sm" id="btn-plantilla-lectores">Descargar plantilla CSV</button>
+
+    <label style="margin-top:1rem">Tipo de lector del archivo
+      <select id="csv-lector-tipo" required>
+        <option value="">Selecciona el tipo…</option>
+        ${Object.entries(TIPO_LECTOR).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
+      </select>
+    </label>
+    <p class="ayuda" id="csv-lector-id"></p>
+
+    <label style="margin-top:.6rem">Archivo CSV
+      <input type="file" id="csv-file" accept=".csv,text/csv">
+    </label>
+    <p class="ayuda">…o pega el contenido del CSV aquí abajo:</p>
+    <textarea id="csv-texto" rows="5" style="width:100%" placeholder="nombre,matricula,carrera,correo,telefono&#10;..."></textarea>
+
+    <div id="csv-preview" style="margin-top:1rem"></div>
+
+    <div class="form-actions">
+      <button type="button" class="btn" data-cerrar>Cancelar</button>
+      <button type="button" class="btn btn-primary" id="btn-importar-confirmar" disabled>Importar</button>
+    </div>`);
+
+  let datos = null;
+  const tipoSel = $('#csv-lector-tipo');
+
+  const actualizarBoton = () => { $('#btn-importar-confirmar').disabled = !(datos && datos.lectores.length && tipoSel.value); };
+
+  const previsualizar = () => {
+    const texto = $('#csv-texto').value.trim();
+    const cont = $('#csv-preview');
+    datos = null;
+    if (!texto) { cont.innerHTML = ''; actualizarBoton(); return; }
+    try {
+      datos = csvALectores(texto);
+      const muestra = datos.lectores.slice(0, 5);
+      cont.innerHTML = `
+        <div class="panel">
+          <div class="panel-head">Vista previa — ${datos.lectores.length} lector(es) detectado(s)</div>
+          <table><thead><tr>${datos.columnas.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+          <tbody>${muestra.map((l) => `<tr>${datos.columnas.map((c) => `<td>${esc(l[c] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table>
+        </div>
+        ${datos.sinReconocer.length ? `<p class="ayuda">Columnas ignoradas: ${esc(datos.sinReconocer.join(', '))}</p>` : ''}
+        ${datos.lectores.length > 5 ? `<p class="ayuda">…y ${datos.lectores.length - 5} más.</p>` : ''}`;
+    } catch (err) {
+      cont.innerHTML = `<p class="form-error">${esc(err.message)}</p>`;
+    }
+    actualizarBoton();
+  };
+
+  tipoSel.addEventListener('change', () => {
+    $('#csv-lector-id').textContent = tipoSel.value
+      ? `Se registrarán con identificación: ${tipoSel.value === 'estudiante' ? ID_LECTOR.credencial_estudiante : ID_LECTOR.INE}.`
+      : '';
+    actualizarBoton();
+  });
+  $('#btn-plantilla-lectores').addEventListener('click', descargarPlantillaLectores);
+  $('#csv-texto').addEventListener('input', previsualizar);
+  $('#csv-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { $('#csv-texto').value = reader.result; previsualizar(); };
+    reader.readAsText(file, 'utf-8');
+  });
+
+  $('#btn-importar-confirmar').addEventListener('click', async () => {
+    if (!datos || !datos.lectores.length || !tipoSel.value) return;
+    const btn = $('#btn-importar-confirmar');
+    btn.disabled = true;
+    btn.textContent = 'Importando…';
+    try {
+      const r = await api('/lectores/importar', { method: 'POST', body: { tipo: tipoSel.value, lectores: datos.lectores } });
+      mostrarResultadoImportacion(r);
+      if (r.creados) toast(`${r.creados} lector(es) importado(s)`);
+      cargarLectores();
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Importar';
+    }
+  });
+}
+
+function mostrarResultadoImportacion(r) {
+  const avisos = r.avisos || [];
+  const lista = (items, texto) => `<ul class="ayuda">${items.slice(0, 30).map((x) => `<li>Fila ${x.fila}: ${esc(texto(x))}</li>`).join('')}</ul>` +
+    (items.length > 30 ? `<p class="ayuda">…y ${items.length - 30} más.</p>` : '');
+  $('#csv-preview').innerHTML = `
+    <div class="panel">
+      <div class="panel-head">Resultado</div>
+      <div style="padding:1rem">
+        <p><span class="badge verde">${r.creados}</span> lector(es) registrado(s) de ${r.total}.</p>
+        ${r.errores.length ? `<p><span class="badge rojo">${r.errores.length}</span> fila(s) omitida(s):</p>${lista(r.errores, (e) => e.error)}` : ''}
+        ${avisos.length ? `<p><span class="badge ambar">${avisos.length}</span> corrección(es) aplicada(s) a filas que sí se guardaron:</p>${lista(avisos, (a) => a.aviso)}` : ''}
+      </div>
+    </div>`;
+  $('.form-actions', $('#modal-cuerpo')).innerHTML = '<button type="button" class="btn btn-primary" data-cerrar>Listo</button>';
+}
+
 async function verLector(id) {
   try {
     const l = await api(`/lectores/${id}`);
@@ -725,7 +878,7 @@ async function verLector(id) {
       <div class="ficha"><dl>
         <dt>Nombre</dt><dd>${esc(l.nombre)}</dd>
         <dt>Tipo</dt><dd>${TIPO_LECTOR[l.tipo]}</dd>
-        <dt>Identificación</dt><dd>${ID_LECTOR[l.identificacion_tipo]} — ${esc(l.identificacion_num)}</dd>
+        <dt>Identificación</dt><dd>${ID_LECTOR[l.identificacion_tipo]}</dd>
         <dt>Matrícula</dt><dd>${esc(l.matricula || '—')}</dd>
         <dt>Carrera / Área</dt><dd>${esc(l.carrera_area || '—')}</dd>
         <dt>Contacto</dt><dd>${esc(l.email || '—')} ${l.telefono ? '· ' + esc(l.telefono) : ''}</dd>
@@ -848,7 +1001,7 @@ async function modalNuevoPrestamo() {
     </form>`);
 
   configurarBuscador('p-lector-buscar', 'p-lector-res', async (q) => (await api(`/lectores?q=${encodeURIComponent(q)}&activo=1`)).slice(0, 6).map((l) => ({
-    id: l.id, texto: `${l.nombre} · ${TIPO_LECTOR[l.tipo]} · ${l.identificacion_num}`,
+    id: l.id, texto: `${l.nombre} · ${TIPO_LECTOR[l.tipo]}${l.matricula ? ' · ' + l.matricula : ''}`,
   })), (item) => {
     $('#p-lector-id').value = item.id;
     $('#p-lector-sel').innerHTML = `<div class="badge azul">${esc(item.texto)}</div>`;
@@ -978,7 +1131,7 @@ async function modalRecibo(id) {
         </dl>
         <hr class="rec-sep">
         <p><strong>Lector:</strong> ${esc(p.lector_nombre)}<br>
-        ${TIPO_LECTOR[p.lector_tipo]} · ${ID_LECTOR[p.lector_identificacion_tipo]}: ${esc(p.lector_identificacion_num)}
+        ${TIPO_LECTOR[p.lector_tipo]} · Identificación: ${ID_LECTOR[p.lector_identificacion_tipo]}
         ${p.lector_matricula ? '· Matrícula: ' + esc(p.lector_matricula) : ''}</p>
         <p><strong>Libro:</strong> ${esc(p.libro_titulo)} — ${esc(p.libro_autor)}<br>
         ISBN: ${esc(p.libro_isbn || '—')} · Código de barras: ${esc(p.libro_codigo_barras)} · Ubicación: ${esc(p.libro_ubicacion || '—')}</p>
@@ -1147,10 +1300,17 @@ function pintarCampus() {
             <td><code>${esc(c.clave)}</code></td>
             <td>${c.libros}</td><td>${c.lectores}</td><td>${c.administradores}</td>
             <td>${badgeEstado(c.activo)}</td>
-            <td><div class="acciones-fila"><button class="btn btn-sm" data-editar-campus="${c.id}">Editar</button></div></td>
+            <td><div class="acciones-fila">
+              <button class="btn btn-sm" data-enlace-campus="${esc(c.clave)}" title="Copia el enlace de la vista del estudiante de este campus">Copiar enlace</button>
+              <button class="btn btn-sm" data-editar-campus="${c.id}">Editar</button></div></td>
           </tr>`).join('')}
       </tbody>
     </table>`;
+  $$('[data-enlace-campus]', tabla).forEach((b) => b.addEventListener('click', async () => {
+    const url = enlaceEstudiante(b.dataset.enlaceCampus);
+    try { await navigator.clipboard.writeText(url); toast('Enlace copiado: ' + url); }
+    catch { window.prompt('Copia el enlace de la vista del estudiante:', url); }
+  }));
   $$('[data-editar-campus]', tabla).forEach((b) =>
     b.addEventListener('click', () => modalCampus(campusCache.find((c) => c.id == b.dataset.editarCampus))));
 }
@@ -1191,7 +1351,7 @@ function modalCampus(campus = null) {
         ${campus ? `<label class="check-linea full"><input type="checkbox" name="activo" ${c.activo ? 'checked' : ''}> Campus activo</label>` : ''}
       </div>
       <p class="ayuda">${campus
-        ? 'La clave no se puede cambiar. Si desactivas el campus, sus administradores no podrán entrar y deja de aparecer en el catálogo de los estudiantes; no se borra ningún dato.'
+        ? 'La clave no se puede cambiar. Si desactivas el campus, sus administradores no podrán entrar y su vista de estudiante deja de funcionar; no se borra ningún dato.'
         : 'Al crearlo estará vacío: después agrega a su administrador para que cargue su catálogo.'}</p>
       <div class="form-actions">
         <button type="button" class="btn" data-cerrar>Cancelar</button>

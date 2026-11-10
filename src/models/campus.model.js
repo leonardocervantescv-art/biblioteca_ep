@@ -10,9 +10,6 @@ const listarConConteos = () => query(
    FROM campus c ORDER BY c.id`
 );
 
-const listarActivos = () =>
-  query('SELECT clave, nombre, ciudad FROM campus WHERE activo = 1 ORDER BY id');
-
 const buscarPorId = async (id) => (await query('SELECT * FROM campus WHERE id = ?', [id]))[0];
 const buscarPorClave = async (clave) => (await query('SELECT * FROM campus WHERE clave = ?', [clave]))[0];
 
@@ -31,5 +28,5 @@ const actualizar = (id, { nombre, ciudad, activo }) =>
   query('UPDATE campus SET nombre = ?, ciudad = ?, activo = ? WHERE id = ?', [nombre, ciudad, activo, id]);
 
 module.exports = {
-  listarConConteos, listarActivos, buscarPorId, buscarPorClave, primeroActivo, contarActivos, crear, actualizar,
+  listarConConteos, buscarPorId, buscarPorClave, primeroActivo, contarActivos, crear, actualizar,
 };

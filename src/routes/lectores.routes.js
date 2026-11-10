@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(authRequired);
 
 router.get('/', ctrl.listar);
+router.post('/importar', ctrl.importar); // antes de /:id
 router.get('/:id', ctrl.obtener);
 router.post('/', ctrl.crear);
 router.put('/:id', ctrl.actualizar);

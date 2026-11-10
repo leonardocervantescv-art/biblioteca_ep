@@ -2,8 +2,9 @@ const libroService = require('../services/libro.service');
 const campusService = require('../services/campus.service');
 
 // Catálogo público de consulta para estudiantes: sólo lectura, sin
-// autenticación. ?campus=<clave> elige el campus (por defecto, el primero).
-const campus = async (req, res) => res.json(await campusService.publicos());
+// autenticación. Cada campus tiene su propia vista: ?campus=<clave> es
+// obligatorio (salvo que exista un único campus) y no se listan otros campus.
+const campus = async (req, res) => res.json(campusService.datosPublicos(await campusService.resolverPublico(req.query.campus)));
 
 const libros = async (req, res) => {
   const c = await campusService.resolverPublico(req.query.campus);

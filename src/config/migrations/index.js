@@ -4,6 +4,7 @@
 // archivo NNN_descripcion.js (exporta { nombre, up(conn) }) y añádelo aquí.
 const MIGRACIONES = [
   require('./001_multi_campus'),
+  require('./002_lectores_sin_numero_identificacion'),
 ];
 
 const LOCK = 'biblioteca_migraciones';

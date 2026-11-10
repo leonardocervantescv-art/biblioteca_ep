@@ -12,16 +12,24 @@ function generarClave(nombre) {
 
 const listar = () => campusModel.listarConConteos();
 
-// Campus visibles para los estudiantes (selector de la vista pública).
-const publicos = () => campusModel.listarActivos();
-
-// Campus que consulta un estudiante: el indicado por `clave` o, si no se
-// indica ninguno, el primero activo.
+// Campus que consulta un estudiante: cada campus tiene su propia vista, así
+// que el enlace debe indicar su clave y NO existe un listado público de campus.
+// Sólo si el sistema tiene un único campus activo se puede omitir la clave.
 async function resolverPublico(clave) {
-  const campus = clave ? await campusModel.buscarPorClave(String(clave)) : await campusModel.primeroActivo();
+  let campus;
+  if (clave) {
+    campus = await campusModel.buscarPorClave(String(clave));
+  } else {
+    if ((await campusModel.contarActivos()) !== 1) {
+      throw httpError(400, 'Falta indicar el campus: usa el enlace de la biblioteca de tu campus');
+    }
+    campus = await campusModel.primeroActivo();
+  }
   if (!campus || !campus.activo) throw httpError(404, 'Campus no encontrado');
   return campus;
 }
+
+const datosPublicos = (c) => ({ clave: c.clave, nombre: c.nombre, ciudad: c.ciudad });
 
 function validarDatos(b) {
   const nombre = String(b.nombre || '').trim();
@@ -59,4 +67,4 @@ async function actualizar(id, b) {
   return campusModel.buscarPorId(id);
 }
 
-module.exports = { listar, publicos, resolverPublico, crear, actualizar };
+module.exports = { listar, resolverPublico, datosPublicos, crear, actualizar };

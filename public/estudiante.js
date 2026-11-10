@@ -81,30 +81,26 @@ async function cargarCategorias() {
   sel.insertAdjacentHTML('beforeend', categorias.map((c) => `<option>${esc(c)}</option>`).join(''));
 }
 
-// Cada campus tiene su propio catálogo. El selector sólo aparece si hay más de
-// uno; el elegido se recuerda y puede compartirse con ?campus=<clave>.
+// Cada campus tiene su propia vista del catálogo: el campus lo fija el enlace
+// (?campus=<clave>) y el estudiante no puede ver ni cambiar a otro campus.
+// Devuelve false si el enlace no corresponde a un campus válido.
 async function iniciarCampus() {
-  const sel = $('#f-cat-campus');
-  const campus = await api('/campus').catch(() => []);
-  if (!campus.length) return;
-  const guardado = (() => { try { return localStorage.getItem('bib_campus'); } catch { return null; } })();
-  const pedido = new URLSearchParams(location.search).get('campus') || guardado;
-  campusActual = (campus.find((c) => c.clave === pedido) || campus[0]).clave;
-  if (campus.length < 2) return;
-  sel.innerHTML = campus.map((c) => `<option value="${esc(c.clave)}">${esc(c.nombre)}</option>`).join('');
-  sel.value = campusActual;
-  sel.hidden = false;
-  sel.addEventListener('input', async () => {
-    campusActual = sel.value;
-    try { localStorage.setItem('bib_campus', campusActual); } catch { /* sin almacenamiento */ }
-    history.replaceState(null, '', `?campus=${encodeURIComponent(campusActual)}`);
-    await cargarCategorias();
-    cargarCatalogo();
-  });
+  campusActual = new URLSearchParams(location.search).get('campus');
+  try {
+    const campus = await api(`/campus${campusActual ? '?campus=' + encodeURIComponent(campusActual) : ''}`);
+    campusActual = campus.clave;
+    $('#cat-campus-nombre').textContent = campus.nombre;
+    document.title = `Catálogo de la Biblioteca — ${campus.nombre}`;
+    return true;
+  } catch (err) {
+    $('#filtros-wrap').hidden = true;
+    $('#cat-resultados').innerHTML = `<p class="vacio">${esc(err.message)}</p>`;
+    return false;
+  }
 }
 
 async function iniciar() {
-  await iniciarCampus();
+  if (!(await iniciarCampus())) return;
   await cargarCategorias();
   ['f-cat-q', 'f-cat-categoria', 'f-cat-disponibilidad'].forEach((id) => $(`#${id}`).addEventListener('input', cargarCatalogo));
   iniciarToggleFiltros();

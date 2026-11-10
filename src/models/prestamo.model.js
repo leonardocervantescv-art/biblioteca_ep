@@ -7,7 +7,6 @@ const SELECT_BASE = `
          l.categoria AS libro_categoria,
          le.nombre AS lector_nombre, le.tipo AS lector_tipo,
          le.identificacion_tipo AS lector_identificacion_tipo,
-         le.identificacion_num AS lector_identificacion_num,
          le.matricula AS lector_matricula, le.email AS lector_email,
          (p.estado = 'activo' AND p.fecha_vencimiento < CURDATE()) AS vencido,
          DATEDIFF(CURDATE(), p.fecha_vencimiento) AS dias_atraso

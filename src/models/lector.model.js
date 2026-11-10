@@ -6,9 +6,9 @@ function listar(campusId, { q, tipo, activo } = {}) {
   const where = ['campus_id = ?'];
   const params = [campusId];
   if (q) {
-    where.push('(nombre LIKE ? OR matricula LIKE ? OR identificacion_num LIKE ? OR email LIKE ?)');
+    where.push('(nombre LIKE ? OR matricula LIKE ? OR email LIKE ?)');
     const like = `%${q}%`;
-    params.push(like, like, like, like);
+    params.push(like, like, like);
   }
   if (tipo) {
     where.push('tipo = ?');
@@ -24,31 +24,36 @@ function listar(campusId, { q, tipo, activo } = {}) {
 const buscarPorId = async (campusId, id, conn) =>
   (await ejecutor(conn)('SELECT * FROM lectores WHERE id = ? AND campus_id = ?', [id, campusId]))[0];
 
-async function existeIdentificacion(campusId, tipo, numero, excluirId) {
+async function existeMatricula(campusId, matricula, excluirId) {
   const rows = excluirId
-    ? await query('SELECT id FROM lectores WHERE campus_id = ? AND identificacion_tipo = ? AND identificacion_num = ? AND id <> ?', [campusId, tipo, numero, excluirId])
-    : await query('SELECT id FROM lectores WHERE campus_id = ? AND identificacion_tipo = ? AND identificacion_num = ?', [campusId, tipo, numero]);
+    ? await query('SELECT id FROM lectores WHERE campus_id = ? AND matricula = ? AND id <> ? LIMIT 1', [campusId, matricula, excluirId])
+    : await query('SELECT id FROM lectores WHERE campus_id = ? AND matricula = ? LIMIT 1', [campusId, matricula]);
   return rows.length > 0;
 }
 
+// Datos mínimos de todos los lectores del campus, para detectar duplicados al
+// importar un CSV sin hacer una consulta por fila.
+const clavesDuplicado = (campusId) =>
+  query('SELECT nombre, tipo, matricula FROM lectores WHERE campus_id = ?', [campusId]);
+
 async function crear(campusId, d) {
   const result = await query(
-    `INSERT INTO lectores (campus_id, nombre, tipo, identificacion_tipo, identificacion_num, matricula, carrera_area, email, telefono)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [campusId, d.nombre, d.tipo, d.identificacion_tipo, d.identificacion_num, d.matricula, d.carrera_area, d.email, d.telefono]
+    `INSERT INTO lectores (campus_id, nombre, tipo, identificacion_tipo, matricula, carrera_area, email, telefono)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [campusId, d.nombre, d.tipo, d.identificacion_tipo, d.matricula, d.carrera_area, d.email, d.telefono]
   );
   return result.insertId;
 }
 
 function actualizar(campusId, id, d) {
   return query(
-    `UPDATE lectores SET nombre=?, tipo=?, identificacion_tipo=?, identificacion_num=?, matricula=?,
+    `UPDATE lectores SET nombre=?, tipo=?, identificacion_tipo=?, matricula=?,
        carrera_area=?, email=?, telefono=?, activo=? WHERE id=? AND campus_id=?`,
-    [d.nombre, d.tipo, d.identificacion_tipo, d.identificacion_num, d.matricula, d.carrera_area, d.email, d.telefono, d.activo, id, campusId]
+    [d.nombre, d.tipo, d.identificacion_tipo, d.matricula, d.carrera_area, d.email, d.telefono, d.activo, id, campusId]
   );
 }
 
 const desactivar = (campusId, id) => query('UPDATE lectores SET activo = 0 WHERE id = ? AND campus_id = ?', [id, campusId]);
 const eliminar = (campusId, id) => query('DELETE FROM lectores WHERE id = ? AND campus_id = ?', [id, campusId]);
 
-module.exports = { listar, buscarPorId, existeIdentificacion, crear, actualizar, desactivar, eliminar };
+module.exports = { listar, buscarPorId, existeMatricula, clavesDuplicado, crear, actualizar, desactivar, eliminar };
